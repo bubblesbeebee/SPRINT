@@ -1,3 +1,25 @@
+STATA16 code: 
+Aim: 
+1) remove duplicates and close out visits 
+2) remove combination meds
+3) create MRA column
+4) generate flags to label first use of MRA
+    - ensure no other medications were added on the same day MRA was started 
+5) using the first use of MRA
+    remove baseline use of MRA (if the daystart is <0)
+    remove observations in the CLOSEOUT period 
+7) record number of times MRA is started - 1 = first time MRA is started, 2 = MRA was stopped and resumed. Only 1 will be included in the cohort. 
+8) merge with BP data
+9) summarize medication list, ensure medication list is identical for the visit prior to MRA startday and on the MRA startday 
+10) enter python loop to calculate pre-MRA SBP averaged across 60 days
+        find the average days pre-MRA initiation 
+11) merge the pre-MRA SBP data w the current master dataset, and export to python 
+12) calculate the mean SBP difference post-pre MRA initiation via python 
+        find the average visit days 
+13) export back to STATA
+
+
+
 use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/bp_med_log_v2.dta", clear
 
 * drop duplicated 
@@ -6,6 +28,43 @@ quietly by maskid formdays:  gen dup = cond(_N==1,0,_n)
 tab dup
 drop if dup == 2 
 drop if dup == 3
+
+Output:
+                    . tab dup
+                
+                        dup |      Freq.     Percent        Cum.
+                    ------------+-----------------------------------
+                          0 |    193,129       99.84       99.84
+                          1 |        154        0.08       99.92
+                          2 |        154        0.08      100.00
+                          3 |          3        0.00      100.00
+                    ------------+-----------------------------------
+                      Total |    193,440      100.00
+
+                        . drop if dup == 2 
+                        (154 observations deleted)
+                    
+                        . drop if dup == 3
+                        (3 observations deleted)
+                    
+                        . distinct maskid
+                    
+                            |        Observations
+                            |      total   distinct
+                        --------+----------------------
+                         maskid |     193283       9344
+
+drop if visitcode == "CLO"
+
+                (7,867 observations deleted)
+    
+                . distinct maskid
+            
+                            |        Observations
+                            |      total   distinct
+                    --------+----------------------
+                 maskid     |     185416       9344
+    
 
 // Define the list of medication names to search for
 // Create a local macro with the list of medications
@@ -16,3 +75,859 @@ forvalues i = 1/10 {
         drop if medname`i' == "`med'"
     }
 } 
+
+Output: 
+                        . distinct maskid 
+                
+                        |        Observations
+                        |      total   distinct
+                --------+----------------------
+                 maskid |     185378       9344
+
+
+* Sort the data by maskid and formdays
+sort maskid formdays
+
+* Generate the MRA column, MRA use ==1 
+gen MRA = 0
+forvalues i = 1/10 {
+    replace MRA = 1 if (strpos(lower(medname`i'), "spir") > 0 | strpos(lower(medname`i'), "inspra") > 0 | strpos(lower(medname`i'), "eple") > 0 | strpos(lower(medname`i'), "aldac") > 0)
+}
+
+                . distinct maskid if MRA ==1
+                
+                        |        Observations
+                        |      total   distinct
+                --------+----------------------
+                 maskid |      11629       1062
+
+
+
+* Generate a flag for each medname column for MRA (spiro/eple/inspra)
+forvalues i = 1/10 {
+    gen flag_mra`i' = strpos(lower(medname`i'), "spiro") > 0 | strpos(lower(medname`i'), "eple") > 0 | strpos(lower(medname`i'), "inspra") > 0
+}
+
+* Create variables to store the first occurrence
+gen first_mra_formdays = .
+gen first_mra_daysstart = .
+gen first_mra_medname = ""
+gen multiple_mra_starts = 0
+
+* Sort and create MRA order variable
+sort maskid formdays
+by maskid: gen mra_order = sum(flag_mra1 + flag_mra2 + flag_mra3 + flag_mra4 + flag_mra5 + flag_mra6 + flag_mra7 + flag_mra8 + flag_mra9 + flag_mra10)
+
+* Find the first occurrence of MRA
+gen any_mra = (flag_mra1 + flag_mra2 + flag_mra3 + flag_mra4 + flag_mra5 + flag_mra6 + flag_mra7 + flag_mra8 + flag_mra9 + flag_mra10) > 0
+by maskid (formdays), sort: replace first_mra_formdays = formdays if any_mra & first_mra_formdays == .
+
+* Identify the specific MRA and its daysstart
+forvalues j = 1/10 {
+    by maskid (formdays): replace first_mra_daysstart = daysstart`j' if flag_mra`j' & formdays == first_mra_formdays & first_mra_daysstart == .
+    by maskid (formdays): replace first_mra_medname = medname`j' if flag_mra`j' & formdays == first_mra_formdays & first_mra_medname == ""
+}
+
+* Check for multiple MRA starts
+by maskid (formdays): replace multiple_mra_starts = 1 if any_mra & formdays > first_mra_formdays & first_mra_formdays != .
+
+* Check for concurrent medication starts
+gen concurrent_start = 0
+forvalues j = 1/10 {
+    replace concurrent_start = 1 if daysstart`j' == first_mra_daysstart & !flag_mra`j' & first_mra_daysstart != .
+}
+
+* Create a flag for cases where MRA started without concurrent meds
+gen mra_solo_start = (first_mra_daysstart != . & concurrent_start == 0)
+
+Output: 
+                . distinct maskid if mra_solo_start ==1
+                
+                        |        Observations
+                        |      total   distinct
+                --------+----------------------
+                 maskid |       8433        883
+
+
+* Keep the 1st observation of MRA being started 
+sort maskid formdays
+bys maskid: egen min_MRA_daystart = min(first_mra_daysstart)
+
+
+* Remove patients who are on MRA at baseline
+distinct maskid if MRA ==1 & min_MRA_daystart <0
+distinct maskid if MRA ==1 & min_MRA_daystart >=0
+distinct maskid if MRA ==1 & min_MRA_daystart >=0 & multiple_MRA_daystart ==0
+distinct maskid if MRA==1 & visitcode == "CLO"
+
+                . distinct maskid if MRA ==1
+                
+                        |        Observations
+                        |      total   distinct
+                --------+----------------------
+                 maskid |      11629       1062
+                
+                . distinct maskid if MRA ==1 & min_MRA_daystart <0
+                
+                        |        Observations
+                        |      total   distinct
+                --------+----------------------
+                 maskid |       2131        142
+                
+                . distinct maskid if MRA ==1 & min_MRA_daystart >=0
+                
+                        |        Observations
+                        |      total   distinct
+                --------+----------------------
+                 maskid |       9498        920
+
+drop if min_MRA_daystart < 0
+
+                . drop if min_MRA_daystart < 0
+                (3,015 observations deleted)
+                
+                . distinct maskid if mra_solo_start ==1
+                
+                        |        Observations
+                        |      total   distinct
+                --------+----------------------
+                 maskid |       7221        779
+                
+                . distinct maskid if MRA ==1 & min_MRA_daystart >=0
+                
+                        |        Observations
+                        |      total   distinct
+                --------+----------------------
+                 maskid |       9498        920
+
+
+
+* generate a cumulative count of how many times MRA treatment starts for each patient
+* counts the number of times MRA switches from 0 to 1 within each maskid group
+* MRA_occurrence will be a cumulative count of the occurrences where:
+    MRA changes from 0 to 1, or
+    MRA is 1 at the start for the maskid, or formdays is 0 and MRA is 1. (because there is no prior to compare if started on formdays 0)
+    Because MRA use at baseline is already removed, if MRA use daystart = formdays 0 
+
+sort maskid formdays
+by maskid: gen MRA_occurrence = sum(MRA == 1 & (MRA[_n-1] == 0 | _n == 1 | formdays == 0))
+
+* Generate a MRA cohort
+gen cohort =. 
+replace cohort = 1 if MRA_occurrence == 1 & mra_solo_start == 1
+
+                    . gen cohort =. 
+                    (182,363 missing values generated)
+                    
+                    . replace cohort = 1 if MRA_occurrence == 1 & mra_solo_start == 1
+                    (6,806 real changes made)
+                    
+                    
+                    . distinct maskid if cohort ==1
+                    
+                            |        Observations
+                            |      total   distinct
+                    --------+----------------------
+                     maskid |       6806        768
+
+
+* To know the previous visit before MRA turns 1
+gen prior_onMRA = .
+by maskid: replace prior_onMRA = formdays[_n-1] if MRA == 1 & (MRA[_n-1] == 0 | _n == 1) & MRA_occurrence == 1
+
+* This subsequent code ensures that only the 1st occurence is used
+replace prior_onMRA = . if MRA_occurrence >= 2 & prior_onMRA != .
+
+* Merge with BP data 
+merge m:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/allbp_intensive+standard.dta"
+
+* Sort data by maskid and formdays
+sort maskid formdays  
+
+* Generate and fill up the entire column for each MRA occurrence
+* Generate variables for the first and second occurrences of MRA
+* The MRA order has the num of occurrence as well but it does not carry forward
+
+by maskid: gen first_onMRA = formdays if MRA == 1 & sum(MRA) == 1
+by maskid: gen second_onMRA = formdays if MRA == 1 & sum(MRA) == 2
+
+* Carry forward non-missing values in the column 'prior_onMRA'
+bysort maskid (formdays): gen prior_onMRA_filled = prior_onMRA if prior_onMRA != .
+bysort maskid (formdays): replace prior_onMRA_filled = prior_onMRA_filled[_n-1] if missing(prior_onMRA_filled)
+
+* Include the first row as well 
+by maskid: replace prior_onMRA = prior_onMRA[_n+1] if missing(prior_onMRA) & !missing(prior_onMRA[_n+1])
+
+* Sort data again by maskid and formdays
+sort maskid formdays
+
+* Fill in the first and second occurrences of MRA
+by maskid: egen first_onMRA_filled = max(first_onMRA)
+by maskid: egen second_onMRA_filled = max(second_onMRA)
+
+* Generate and fill in the third and fourth occurrences of MRA
+by maskid: gen third_onMRA = formdays if MRA == 1 & sum(MRA) == 3
+by maskid: egen third_onMRA_filled = max(third_onMRA)
+by maskid: gen fourth_onMRA = formdays if MRA == 1 & sum(MRA) == 4
+by maskid: egen fourth_onMRA_filled = max(fourth_onMRA)
+
+* medication list
+sort maskid formdays
+gen med_oxin = 0
+gen med_triam = 0
+gen med_olol = 0
+gen med_ipine_azem = 0
+gen med_thia_chlo_hct = 0
+gen med_fur_bum_tors = 0
+gen med_hydral_azine = 0
+gen med_pril_artan = 0
+gen med_idine_clon = 0
+gen med_minoxi = 0 
+gen med_guanfacine = 0 
+
+* Check each medname variable for the specified patterns
+forvalues i = 1/10 {
+    replace med_oxin = 1 if regexm(lower(medname`i'), "(cardu|doxa|osin|oxin|hytrin|tera|tamsu|alfu)")
+	replace med_triam = 0.0005 if regexm(lower(medname`i'), "(triam|amil)")
+    replace med_olol = 2 if regexm(lower(medname`i'), "(olol|metop|coreg|carv|lopre|topr|propa|nebi|nado|atenelol)")
+    replace med_ipine_azem = 5 if regexm(lower(medname`i'), "(ipine|azem|norv|vera|nife|proca|nicar|nefe|caduet)")
+	replace med_minoxi = 10000 if regexm(lower(medname`i'), "(mino|xidil)")
+	replace med_guanfacine = 0.01 if regexm(lower(medname`i'), "(guan)")
+    replace med_thia_chlo_hct = 9 if regexm(lower(medname`i'), "(thia|chlo|chlorth|hyrdo|thiaz|azide|hyzaar|indap|metola|diurel|hctz)")
+    replace med_fur_bum_tors = 13 if regexm(lower(medname`i'), "(fur|bum|tors|inda|etha|demadex)")
+    replace med_hydral_azine = 0.5 if regexm(lower(medname`i'), "(hydral|azine)")
+    replace med_pril_artan = 1000 if regexm(lower(medname`i'), "(pril|artan|benic|vals|olme|edarbi|diovan|azil|trando|micardis|atacand)")
+    replace med_idine_clon = 100 if regexm(lower(medname`i'), "(idine|clon|cata)")
+}
+* Sum all medication categories into a single variable
+gen med_category = med_oxin + med_olol + med_ipine_azem + med_thia_chlo_hct + med_fur_bum_tors + med_hydral_azine + med_pril_artan + med_idine_clon + med_minoxi + med_triam + med_guanfacine 
+
+
+* Label the new variable
+label variable med_category "Sum of medication categories"
+
+* Clean up intermediate variables
+drop med_oxin med_olol med_ipine_azem med_thia_chlo_hct med_fur_bum_tors med_hydral_azine med_pril_artan med_idine_clon med_minoxi  med_triam med_guanfacine
+
+
+sort maskid formdays 
+ 
+* Get med_category for first and second MRA visits
+by maskid: gen prior_med_category = med_category if formdays == prior_onMRA
+
+* Because prior_onMRA is one row below
+by maskid: replace prior_med_category = med_category if formdays == prior_onMRA_filled
+
+* Generate column to store "med_category" according to visits 
+by maskid: gen first_med_category = med_category if formdays == first_onMRA 
+by maskid: gen second_med_category = med_category if formdays == second_onMRA 
+by maskid: gen third_med_category = med_category if formdays == third_onMRA
+by maskid: gen fourth_med_category = med_category if formdays == fourth_onMRA
+
+* Fill these values for all rows within each maskid
+by maskid: egen prior_med_category_filled = max(prior_med_category)
+by maskid: egen first_med_category_filled = max(first_med_category)
+by maskid: egen second_med_category_filled = max(second_med_category)
+by maskid: egen third_med_category_filled = max(third_med_category)
+by maskid: egen fourth_med_category_filled = max(fourth_med_category)
+
+* Generate the difference in med_category between first and second visit - they should be equal 
+gen med_category_diff_2_1 = second_med_category_filled - first_med_category_filled
+gen med_category_diff_3_1 = third_med_category_filled - first_med_category_filled
+gen med_category_diff_3_2 = third_med_category_filled - second_med_category_filled
+gen med_category_diff_prior_1 = prior_med_category_filled - first_med_category_filled 
+ 
+* Flag if med_category is unequal between visits
+gen med_category_prior_1_unequal = (med_category_diff_prior_1 != 0 & med_category_diff_prior_1 !=.)
+gen med_category_2_1_unequal = (med_category_diff_2_1 != 0 & med_category_diff_2_1 !=.)
+gen med_category_3_1_unequal = (med_category_diff_3_1 != 0 & med_category_diff_3_1 !=. )
+gen med_category_3_2_unequal = (med_category_diff_3_2 != 0 & med_category_diff_3_2 !=. ) 
+
+* Label the new variables
+label variable med_category_diff_2_1 "Difference in med_category between 1st and 2nd mra visits"
+label variable med_category_2_1_unequal "Flag: 1 if med_category unequal between 1st and 2nd mra visits"
+
+* Update cohort criteria
+    * Generate a MRA cohort
+gen cohort2 =.
+
+* my cohort1 was = MRA_occurrence == 1 and mra_solo_start == 1 without the med_category_prior_1_unequal == 0
+replace cohort2 = 1 if MRA == 1 & MRA_occurrence == 1 & med_category_prior_1_unequal == 0 & mra_solo_start == 1 
+
+Output: 
+            
+                
+                . distinct maskid if cohort ==1
+                
+                        |        Observations
+                        |      total   distinct
+                --------+----------------------
+                 maskid |       6809        768
+                
+                . distinct maskid if cohort2==1
+                
+                        |        Observations
+                        |      total   distinct
+                --------+----------------------
+                 maskid |       6142        681
+
+
+* explanation: the 768 if from the criteria that no other meds share the SAME start day w MRA. it does not exclude the meds that 
+was started a couple days before or after MRA was started. The med_category list will reflect the changes of medications across visit, 
+so it is a more robust way to ensure no other meds was started other than a MRA. 
+
+
+* Fill up the BP columns
+* Generate variables for SBP at the time of MRA occurrences
+by maskid: gen first_SBP = seatsys if formdays == first_onMRA_filled
+by maskid: egen first_SBP_filled = max(first_SBP)
+by maskid: gen second_SBP = seatsys if formdays == second_onMRA_filled
+by maskid: egen second_SBP_filled = max(second_SBP)
+by maskid: gen third_SBP = seatsys if formdays == third_onMRA_filled
+by maskid: egen third_SBP_filled = max(third_SBP)
+by maskid: gen fourth_SBP = seatsys if formdays == fourth_onMRA_filled
+by maskid: egen fourth_SBP_filled = max(fourth_SBP)
+
+
+* Find out who has missing SBP at baseline
+
+gen missing_SBP_baseline = .
+replace missing_SBP_baseline = 1 if cohort ==1 & cohort !=. & first_SBP_filled !=.
+
+Output: 
+                . distinct maskid if cohort2 ==1 & missing_SBP_baseline !=.
+                
+                        |        Observations
+                        |      total   distinct
+                --------+----------------------
+                 maskid |       5730        634
+                
+                . distinct maskid if cohort2 ==1 & missing_SBP_baseline ==.
+                
+                        |        Observations
+                        |      total   distinct
+                --------+----------------------
+                 maskid |        412         47
+
+* explanation: out of the total 681 eligible subjects, 47 has missing SBP 
+
+* save as masterdata 
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_MRA_9.1.dta"
+
+
+* Generate a subdata for calculation of average BP pre-MRA initiation 
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_MRA_9.1.dta"
+sort maskid formdays
+
+* Because the min_MRA_daystart fills up the entire column, I therefore removed anyone who has a 
+missing value meaning they have never been on a MRA at anytime during the trial 
+
+drop if min_MRA_daystart ==.  
+
+Output: 
+                . drop if min_MRA_daystart ==.  
+                (174,774 observations deleted)
+                
+                . distinct maskid if cohort2 ==1
+                
+                        |        Observations
+                        |      total   distinct
+                --------+----------------------
+                 maskid |       6142        681
+
+
+gen day_diff_pre = min_MRA_daystart - formdays
+
+* the MRA daystart should be greater than the formdays because I want to obtain the BP values in visits PRIOR to MRA initiation
+sort maskid formdays
+drop if day_diff_pre <0 & day_diff_pre !=. 
+
+* limit the prior visit to within 60 days 
+drop if day_diff_pre >60 
+
+* instead of sorting by formdays
+    sort by day_diff_pre so the first observation of the med_category which is the day MRA is started 
+    can be used as a reference for prior visit med_category
+
+sort maskid day_diff_pre
+by maskid: gen consistent_med = (med_category == med_category[1])
+
+* browse data to export to excel as csv file
+browse maskid formdays seatsys day_diff_pre consistent_med min_MRA_daystart
+
+export delimited maskid formdays seatsys day_diff_pre consistent_med min_MRA_daystart using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/export preMRA bp to python 9.1", replace
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/MRA_cohort_preMRA_BPaveraged_8.23.dta", replace 
+
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/subset_masterdata_MRA_9.1_for_preMRA_SBP_python.dta"
+
+
+* enter Python 
+import numpy as np
+import pandas as pd
+
+def calculate_bp_pre_mra(df):
+    # Sort the dataframe by maskid and day_diff_pre in descending order
+    df = df.sort_values(['maskid', 'day_diff_pre'], ascending=[True, False])
+
+    # Initialize columns for bp_pre_MRA visits
+    max_visits = 10  # Adjust this number based on your data
+    for i in range(1, max_visits + 1):
+        df[f'bp_pre_MRA_visit_{i}'] = np.nan
+
+    # Function to process each patient
+    def process_patient(group):
+        visit_count = 0
+        record_seatsys = False
+        day_diff_pre_values = []  # List to store day_diff_pre values for valid visits
+
+        for idx, row in group.iterrows():
+            if 0 <= row['day_diff_pre'] <= 60:
+                if row['consistent_med'] == 1:
+                    if not pd.isna(row['seatsys']):
+                        visit_count += 1
+                        group.loc[idx, f'bp_pre_MRA_visit_{visit_count}'] = row['seatsys']
+                        day_diff_pre_values.append(row['day_diff_pre'])
+                        record_seatsys = True
+                elif row['consistent_med'] == 0:
+                    # Reset when consistent_med turns 0
+                    record_seatsys = False
+                    visit_count = 0
+            if row['day_diff_pre'] == 0 and visit_count == 0 and not pd.isna(row['seatsys']):
+                visit_count += 1
+                group.loc[idx, f'bp_pre_MRA_visit_{visit_count}'] = row['seatsys']
+                day_diff_pre_values.append(row['day_diff_pre'])
+
+        # Calculate statistics for day_diff_pre
+        if day_diff_pre_values:
+            group['mean_day_diff_pre'] = np.mean(day_diff_pre_values)
+            group['median_day_diff_pre'] = np.median(day_diff_pre_values)
+            group['min_day_diff_pre'] = np.min(day_diff_pre_values)
+            group['max_day_diff_pre'] = np.max(day_diff_pre_values)
+        else:
+            group['mean_day_diff_pre'] = np.nan
+            group['median_day_diff_pre'] = np.nan
+            group['min_day_diff_pre'] = np.nan
+            group['max_day_diff_pre'] = np.nan
+
+        return group
+
+    # Apply the function to each patient group
+    df = df.groupby('maskid').apply(process_patient)
+
+    # Calculate the average of bp_pre_MRA across visits
+    bp_pre_mra_columns = [f'bp_pre_MRA_visit_{i}' for i in range(1, max_visits + 1)]
+    df['avg_bp_pre_MRA'] = df[bp_pre_mra_columns].mean(axis=1)
+
+    return df
+
+# Assuming you have your dataframe loaded as 'df'
+# df = pd.read_csv('your_data.csv')
+
+# Apply the function to your dataframe
+df = calculate_bp_pre_mra(df)
+
+# Display the results
+print(df[['maskid', 'day_diff_pre', 'consistent_med', 'seatsys'] + 
+        [f'bp_pre_MRA_visit_{i}' for i in range(1, 11)] + 
+        ['avg_bp_pre_MRA', 'mean_day_diff_pre', 'median_day_diff_pre', 'min_day_diff_pre', 'max_day_diff_pre']])
+
+# Save the results
+df.to_csv('bp_pre_mra_results_test_9.1.csv', index=False)
+print("Results saved to 'bp_pre_mra_results_test.csv'")
+
+
+**** Footnote:
+Inside the process_patient function, I added a list day_diff_pre_values to store the day_diff_pre values for valid visits.
+When a valid visit is recorded (i.e., when we set a value for bp_pre_MRA_visit_X), 
+we now also append the corresponding day_diff_pre value to our list.
+After processing all rows for a patient, I added calculations for the mean, median, min, and max of the day_diff_pre values
+
+
+
+
+* back to STATA 16
+import delimited "/Users/jiawei/Downloads/bp_pre_mra_results_test_9.1.csv", clear 
+
+Output: (can export to excel for visibility) 
+maskid	formdays	seatsys	day_diff_pre	consistent_med	min_mra_daystart	bp_pre_mra_visit_1	bp_pre_mra_visit_2	bp_pre_mra_visit_3	bp_pre_mra_visit_4	mean_day_diff_pre	median_day_diff_pre	min_day_diff_pre	max_day_diff_pre	avg_bp_pre_mra
+S00087	64	159	55	1	119	159				29.66667	34	0	55	159
+S00087	85	172	34	1	119		172			29.66667	34	0	55	172
+S00087	119	148	0	1	119			148		29.66667	34	0	55	148
+S00193	0	147	33	1	33	147				17	17	1	33	147
+S00193	32	137	1	1	33		137			17	17	1	33	137
+S001E5	1002	124	45	1	1047	124				24	24	3	45	124
+S001E5	1044	131	3	1	1047		131			24	24	3	45	131
+S00248	185	129	0	1	185	129				0	0	0	0	129
+S00343	1488	128	8	1	1496	128				8	8	8	8	128
+
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/preMRA_bpavg_frmpython9.1.dta"
+
+sort maskid formdays
+by maskid: egen previsit1BP = max(bp_pre_mra_visit_1)
+by maskid: egen previsit2BP = max(bp_pre_mra_visit_2)
+by maskid: egen previsit3BP = max(bp_pre_mra_visit_3)
+by maskid: egen previsit4BP = max(bp_pre_mra_visit_4)
+egen row_mean = rowmean(previsit1BP previsit2BP previsit3BP previsit4BP) 
+rename row_mean meanSBPpreMRA
+rename meanSBPpreMRA new_first_sbp_avg
+
+
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/preMRA_bpavg_frmpython9.1.dta", replace
+
+* With the above I had transferred python pre-MRA averaged SBP 
+* Combine this with the FULL cohort... 
+
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_MRA_9.1.dta"
+drop _merge
+
+* merge with formdays as part of the criteria as well because the maskid is not unique, but the maskid+formdays combo is unique 
+merge m:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/preMRA_bpavg_frmpython9.1.dta"
+sort maskid formdays
+
+Output: 
+            
+                Result                           # of obs.
+                -----------------------------------------
+                not matched                       194,137
+                    from master                   194,137  (_merge==1)
+                    from using                          0  (_merge==2)
+            
+                matched                             1,530  (_merge==3)
+                -----------------------------------------
+
+                . distinct maskid if _merge ==3
+                
+                        |        Observations
+                        |      total   distinct
+                --------+----------------------
+                 maskid |       1530        862   
+
+                (this 862 number is different from prior, because I did not set cohort == 1 or cohort2 ==1 
+                pre-MRA BP calculation. The purpose is to get systolic BP baseline for every one on MRA and apply the filters afterwards)
+
+                . distinct maskid if cohort2 ==1 & first_SBP_filled !=.
+                
+                        |        Observations
+                        |      total   distinct
+                --------+----------------------
+                 maskid |       5730        634
+
+                (this number 634 is the same as prior at line 397) 
+
+
+* fill up the entire column with the new first SBP avg 
+egen new_first_sbp_avg_filled = min(new_first_sbp_avg) , by (maskid)
+
+                . distinct maskid if cohort2 ==1 & new_first_sbp_avg_filled !=.
+                
+                        |        Observations
+                        |      total   distinct
+                --------+----------------------
+                 maskid |       5961        661
+
+by maskid: egen new_first_sbp_avg_filled_2 = max(new_first_sbp_avg) 
+
+                . distinct maskid if cohort2 ==1 & new_first_sbp_avg_filled_2 !=.
+                
+                        |        Observations
+                        |      total   distinct
+                --------+----------------------
+                 maskid |       5961        661
+
+* either egen min or max does not matter because the there is only ONE new_first_sbp_avg for each maskid 
+* hence the number is the same, 661 as shown above. 
+* note that the number increased from 634 to 661 after the expanded criteria
+
+* the mean days SBP was obtained prior to MRA initiation 
+
+                . summarize day_diff_pre if new_first_sbp_avg !=. 
+                
+                    Variable |        Obs        Mean    Std. Dev.       Min        Max
+                -------------+---------------------------------------------------------
+                day_diff_pre |      1,509    16.97416     19.9385          0         60
+
+
+* the "consistent_med" from the pre-MRA initiation BP data now I want to calculte the post MRA initiaiton BP 
+drop consistent_med 
+
+* Now to get the SBP in 90 days post MRA 
+* Keep only observations within 90 days of first MRA start or where first_MRA_occurrence is 1
+
+gen diff = formdays - min_MRA_daystart if MRA ==1
+keep if diff!=. & diff<91
+keep if diff>=0 
+
+* Sort the data
+sort maskid formdays 
+* Check for consistent med_category again
+by maskid: gen consistent_med = (med_category == med_category[1])
+
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_w_premraSBP_prepforpython9.1.dta"
+
+browse maskid formdays new_first_sbp_avg_filled min_MRA_daystart diff seatsys med_category 
+
+export delimited maskid formdays new_first_sbp_avg_filled min_MRA_daystart diff seatsys med_category consistent_med using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/export postmra bp to python 9.1", replace
+
+* an excerpt of the data, can run in excel for visibility 
+maskid	formdays	MRA	first_mra_formdays	min_MRA_daystart	med_category	cohort2	diff	consistent_med
+S00087	119	1	119	119	1019	1	0	1
+S00087	155	1	155	119	1008	1	36	0
+S00087	189	1	189	119	1008	1	70	0
+S00087	206	1	206	119	1008	1	87	0
+S00193	54	1	54	33	1005		21	1
+S00193	69	1	69	33	1005		36	1
+S00193	91	1	91	33	1014		58	0
+
+* note that the cohort2 comprised of restricted criteria- I had every one on MRA in this subset of data 
+to get the max number of delta SBP, will apply filters afterwards
+* med category of the first time MRA was started is used as the reference for consistent_med
+* if consistent med turns zero, it marks a difference in med_category from the prior visit. 
+* in this case, the SBP along the row which consistent_med turns zero will still be used because the medication changes effect
+will be reflected in the NEXT SBP not the current one. 
+
+
+
+
+* enter python 
+
+import numpy as np
+import pandas as pd
+
+# Sort the dataframe by maskid and formdays
+df = df.sort_values(['maskid', 'formdays'])
+
+# Initialize new columns for results
+df['bp_diff'] = np.nan
+df['days_since_MRA'] = np.nan
+
+# Initialize columns for visit-specific bp_diff
+for i in range(1, 6):
+    df[f'bp_diff_visit_{i}'] = np.nan
+
+# Initialize new columns for diff duration statistics
+df['mean_diff_duration'] = np.nan
+df['median_diff_duration'] = np.nan
+df['min_diff_duration'] = np.nan
+df['max_diff_duration'] = np.nan
+
+# Group the dataframe by maskid
+for maskid, group in df.groupby('maskid'):
+    group = group.copy()  # Create a copy to avoid SettingWithCopyWarning
+    
+    # Check if MRA_daystart is NaN for all rows in this group
+    if group['min_MRA_daystart'].isna().all():
+        continue
+    
+    # Find the first non-NaN MRA_daystart
+    min_MRA_daystart = group['min_MRA_daystart'].dropna().iloc[0]
+    
+    # Calculate days since MRA start
+    group['days_since_MRA'] = group['formdays'] - min_MRA_daystart
+    
+    # Filter rows that are at least 30 days after MRA start
+    eligible_rows = group[group['days_since_MRA'] >= 30]
+    
+    if eligible_rows.empty:
+        continue  # Skip if no eligible rows
+    
+    visit_count = 0
+    last_valid_seatsys = None
+    diff_durations = []  # List to store diff durations for statistics
+    
+    for idx, row in eligible_rows.iterrows():
+        if pd.isna(row['seatsys']) and last_valid_seatsys is not None:
+            seatsys = last_valid_seatsys
+        else:
+            seatsys = row['seatsys']
+            last_valid_seatsys = seatsys
+        
+        if pd.notna(seatsys):
+            bp_diff = seatsys - row['new_first_sbp_avg_filled']
+            if row['consistent_med'] == 1:
+                visit_count += 1
+                group.loc[idx, f'bp_diff_visit_{visit_count}'] = bp_diff
+                group.loc[idx, 'bp_diff'] = bp_diff
+                diff_durations.append(row['days_since_MRA'])
+            elif row['consistent_med'] == 0:
+                group.loc[idx, 'bp_diff'] = bp_diff
+                diff_durations.append(row['days_since_MRA'])
+                break  # Stop calculating bp_diff after consistent_med becomes 0
+    
+    # Calculate average bp_diff across all visits
+    bp_diff_columns = [f'bp_diff_visit_{i}' for i in range(1, 6)]
+    group['avg_bp_diff'] = group[bp_diff_columns].mean(axis=1)
+    
+    # Calculate statistics for diff durations
+    if diff_durations:
+        mean_diff_duration = np.mean(diff_durations)
+        median_diff_duration = np.median(diff_durations)
+        min_diff_duration = np.min(diff_durations)
+        max_diff_duration = np.max(diff_durations)
+        
+        # Assign these values to all rows in the group
+        group['mean_diff_duration'] = mean_diff_duration
+        group['median_diff_duration'] = median_diff_duration
+        group['min_diff_duration'] = min_diff_duration
+        group['max_diff_duration'] = max_diff_duration
+    
+    # Update the original dataframe with the results
+    df.update(group)
+
+# Export to STATA
+float_columns = df.select_dtypes(include=['float64']).columns
+df[float_columns] = df[float_columns].astype('float32')
+df.to_stata('post_MRA_BP_avg_file_9.1.dta', version=117, write_index=True)
+print("Data exported successfully")
+
+
+* Import to STATA
+use "/Users/jiawei/Downloads/post_MRA_BP_avg_file_9.1.dta"
+egen mean_bp_diff = mean(bp_diff), by(maskid)
+
+* an excerpt of the dataset
+        index	maskid	formdays	new_first_sbp_avg_filled	min_MRA_daystart	diff	seatsys	med_category	consistent_med	bp_diff	days_since_MRA	bp_diff_visit_1	bp_diff_visit_2	mean_diff_duration	mean_bp_diff
+        0	S00087	119	159.6667	119	0	148	1019	1		0			36	-2.666672
+        1	S00087	155	159.6667	119	36	157	1008	0	-2.666672	36			36	-2.666672
+        2	S00087	189	159.6667	119	70	129	1008	0		70			36	-2.666672
+        3	S00087	206	159.6667	119	87	101	1008	0		87			36	-2.666672
+        4	S00193	54	142	33	21	145	1005	1		21			47	-21
+        5	S00193	69	142	33	36	111	1005	1	-31	36	-31		47	-21
+        6	S00193	91	142	33	58	131	1014	0	-11	58			47	-21
+        7	S001E5	1079	127.5	1047	32	118	1017	1	-9.5	32	-9.5		57	-8.5
+        8	S001E5	1129	127.5	1047	82	120	1017	1	-7.5	82		-7.5	57	-8.5
+        9	S00248	185	129	185	0	129	1015	1		0			66	-13
+        10	S00248	209	129	185	24	127	1015	1		24			66	-13
+
+
+*footnote: each maskid will have ONE mean_diff which means the mean of the formdays used to calculate delta BP 
+* for example, day 36 and 58 is used to calculate BP, it is averaged as 47
+
+* the mean duration of formdays for SBP delta calculation 
+* since each maskid have 1 mean diff duration, I will only take one observation from each maskid so when I average the mean diff duration, 
+the denominator is comprised of unique individuals rather than all the available observations
+
+sort maskid formdays
+by maskid: gen first_obs = (_n == 1)
+
+bysort first_ob: summarize mean_diff_duration, detail
+                    -> first_obs = 1
+                    
+                                         mean_diff_duration
+                    -------------------------------------------------------------
+                          Percentiles      Smallest
+                     1%           30             30
+                     5%           33             30
+                    10%           35             30       Obs                 648
+                    25%           46             30       Sum of Wgt.         648
+                    
+                    50%           56                      Mean           56.74331
+                                            Largest       Std. Dev.      15.26855
+                    75%     66.83333             90
+                    90%           78             90       Variance       233.1287
+                    95%           84             90       Skewness        .249826
+                    99%           90             90       Kurtosis        2.38899
+
+* total of 648 BP delta calculated, the mean formdays for BP calculation is 56 which is pretty good!.... the smallest being 30 as reflected 
+by our criterias.
+* please note that this calculation is for every one on MRA, has yet to apply the filters for cohort 1 or cohort 2. 
+
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/from python delta BP 9.1.dta"
+
+
+* now merge the dataset with masterdata
+
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_MRA_9.1.dta"
+drop _merge
+merge m:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/from python delta BP 9.1.dta"
+drop _merge 
+
+
+                Result                           # of obs.
+                -----------------------------------------
+                not matched                       193,643
+                    from master                   193,643  (_merge==1)
+                    from using                          0  (_merge==2)
+            
+                matched                             2,024  (_merge==3)
+                -----------------------------------------
+
+Output: 
+                . distinct maskid if cohort2 ==1
+                
+                        |        Observations
+                        |      total   distinct
+                --------+----------------------
+                 maskid |       6142        681
+                
+                . distinct maskid if cohort2 ==1 & mean_bp_diff !=. 
+                
+                        |        Observations
+                        |      total   distinct
+                --------+----------------------
+                 maskid |       1019        425
+
+
+                    . summarize mean_diff_duration, detail, if cohort2 ==1
+                    
+                                         mean_diff_duration
+                    -------------------------------------------------------------
+                          Percentiles      Smallest
+                     1%           30             30
+                     5%           34             30
+                    10%           35             30       Obs               1,037
+                    25%           47             30       Sum of Wgt.       1,037
+                    
+                    50%           57                      Mean           57.20958
+                                            Largest       Std. Dev.      14.67629
+                    75%           67             90
+                    90%           77             90       Variance       215.3935
+                    95%           84             90       Skewness       .1866568
+                    99%           90             90       Kurtosis       2.452496
+
+
+
+. summarize mean_diff_duration, detail, if cohort2 ==1
+
+                     mean_diff_duration
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%           30             30
+ 5%           34             30
+10%           35             30       Obs               1,037
+25%           47             30       Sum of Wgt.       1,037
+
+50%           57                      Mean           57.20958
+                        Largest       Std. Dev.      14.67629
+75%           67             90
+90%           77             90       Variance       215.3935
+95%           84             90       Skewness       .1866568
+99%           90             90       Kurtosis       2.452496
+
+. summarize mean_bp_diff, detail, if cohort2 ==1
+
+                        mean_bp_diff
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%          -58            -74
+ 5%          -37            -61
+10%          -30            -61       Obs               1,019
+25%        -20.5            -61       Sum of Wgt.       1,019
+
+50%          -11                      Mean          -11.60983
+                        Largest       Std. Dev.      15.63657
+75%           -2             31
+90%            7             37       Variance       244.5022
+95%           14             37       Skewness      -.2219578
+99%         28.5             37       Kurtosis       3.954523
+
+
+. distinct maskid if cohort2 ==1 & mean_bp_diff !=. 
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |       1019        425
+
+
+not sure why the mean_bp_diff and mean_bp_duration is different. 
+
