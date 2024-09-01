@@ -86,48 +86,52 @@ Output:
 
 * Generate a flag for each medname column for thiazide 
 forvalues i = 1/10 {
-    gen flag_mra`i' = strpos(lower(medname`i'), "hctz") > 0 | strpos(lower(medname`i'), "hct") > 0 | strpos(lower(medname`i'), "hydro") > 0 | strpos(lower(medname`i'), "chlorth") > 0 | strpos(lower(medname`i'), "chloro") > 0 | strpos(lower(medname`i'), "indapa") > 0 |strpos(lower(medname`i'), "metolaz") > 0 |strpos(lower(medname`i'), "diurel") > 0 | strpos(lower(medname`i'), "azide") > 0 | strpos(lower(medname`i'), "lidone") > 0
+    gen flag_thiazide`i' = strpos(lower(medname`i'), "hctz") > 0 | strpos(lower(medname`i'), "hct") > 0 | strpos(lower(medname`i'), "hydro") > 0 | strpos(lower(medname`i'), "chlorth") > 0 | strpos(lower(medname`i'), "chloro") > 0 | strpos(lower(medname`i'), "indapa") > 0 |strpos(lower(medname`i'), "metolaz") > 0 |strpos(lower(medname`i'), "diurel") > 0 | strpos(lower(medname`i'), "azide") > 0 | strpos(lower(medname`i'), "lidone") > 0
 }
 
-* Create variables to store the first occurrence
-gen first_thiazide_formdays = .
-gen first_thiazide_daysstart = .
-gen first_thiazide_medname = ""
-gen multiple_thiazide_starts = 0
-
-* Sort and create thiazide order variable
-sort maskid formdays
-by maskid: gen thiazide_order = sum(flag_thiazide1 + flag_thiazide2 + flag_thiazide3 + flag_thiazide4 + flag_thiazide5 + flag_thiazide6 + flag_thiazide7 + flag_thiazide8 + flag_thiazide9 + flag_thiazide10)
-
-* Find the first occurrence of thiazide
+* Create an indicator for any thiazide use
 gen any_thiazide = (flag_thiazide1 + flag_thiazide2 + flag_thiazide3 + flag_thiazide4 + flag_thiazide5 + flag_thiazide6 + flag_thiazide7 + flag_thiazide8 + flag_thiazide9 + flag_thiazide10) > 0
-by maskid (formdays), sort: replace first_thiazide_formdays = formdays if any_thiazide & first_thiazide_formdays == .
 
-* Identify the specific thiazide and its daysstart
+* Identify the first occurrence of thiazide for each maskid
+by maskid (formdays): gen first_thiazide_occurrence = any_thiazide == 1 & sum(any_thiazide) == 1
+
+* explanation: sum(any_thiazide) is a running sum of the any_thiazide variable within each maskid group.
+It equals 1 only for the first occurrence of a thiazide within each group. 
+For each maskid, the function goes through the rows in order of formdays.
+The first time it encounters a row where any_thiazide is 1, both conditions are true, so first_thiazide_occurrence is set to 1 for that row.
+For any subsequent rows where any_thiazide is 1, the second condition (sum(any_thiazide) == 1) will be false, so first_thiazide_occurrence will be 0. This ensures that first_thiazide_occurrence is 1 only for the first occurrence of a thiazide medication for each patient, regardless of which row it appears in.
+
+* Record the formdays and daysstart of the first thiazide occurrence
+gen first_thiazide_formdays = formdays if first_thiazide_occurrence == 1
+by maskid: egen first_thiazide_formdays_filled = min(first_thiazide_formdays)
+
+* explanation: Since we only filled in first_thiazide_formdays for the first occurrence, this minimum will be the formdays of the first thiazide occurrence. This function allows us to know when thiazide (in regards of formdays) was first started for a patient, regardless of which row we're looking at for that patient.
+
+
+
 forvalues j = 1/10 {
-    by maskid (formdays): replace first_thiazide_daysstart = daysstart`j' if flag_thiazide`j' & formdays == first_thiazide_formdays & first_thiazide_daysstart == .
-    by maskid (formdays): replace first_thiazide_medname = medname`j' if flag_thiazide`j' & formdays == first_thiazide_formdays & first_thiazide_medname == ""
+    replace first_thiazide_daysstart = daysstart`j' if first_thiazide_occurrence == 1 & flag_thiazide`j' == 1
 }
+by maskid: egen first_thiazide_daysstart_filled = min(first_thiazide_daysstart)
+
+* explanation: this is to capture the correct daysstart for the first thiazide occurrence, which could be in any of the 10 medication columns. Repeat this value for every row of each patient, which is useful for subsequent analyses or when checking for changes in medication timing.
+
+
 
 * Check for multiple thiazide starts
-by maskid (formdays): replace multiple_thiazide_starts = 1 if any_thiazide & formdays > first_thiazide_formdays & first_thiazide_formdays != .
+by maskid (formdays): gen multiple_thiazide_starts = sum(any_thiazide) > 1 & any_thiazide == 1
 
+* Check for multiple thiazide starts
+gen multiple_thiazide_starts = . 
+by maskid (formdays): replace multiple_thiazide_starts = 1 if any_thiazide & formdays > first_thiazide_daysstart_filled & first_thiazide_daysstart_filled != .
 
-* explanation: 
-* The conditions:
-
-any_mra: This checks if there's an thiazide medication present in this row.
-formdays > first_thiazide_formdays: This checks if the current formdays is greater than the formdays of the first thiazide start. This indicates a later date.
-first_thiazide_formdays != .: This ensures that we've actually found a first thiazide start (it's not missing).
-For each patient, going through their data chronologically, if we find an thiazide medication on a day that's later than the day we first saw a thiazide medication, mark this patient as having multiple thiazide starts. This helps identify patients who may have stopped and restarted thiazide medications, or switched between different medications. The multiple_thiazide_starts flag will be set to 1 for these patients, indicating that they had more than one distinct period of thiazide medication use.
-
+* explanation: For each patient, going through their data chronologically, if we find thiazide on a day that's later than the day we first saw thiazide, mark this patient as having multiple thiazide starts.
+This helps identify patients who may have stopped and restarted thiazide, or switched between different thiazide medications. The multiple_thiazide_starts flag will be set to 1 for these patients, indicating that they had more than one distinct period of thiazide medication use.
 
 * Check for concurrent medication starts
 * Ensure the data is sorted by maskid and formdays
 sort maskid formdays
 
-* Identify the first occurrence of Thiazide for each maskid
-by maskid: gen first_thiazide_occurrence = _n == 1 if first_thiazide_daysstart != .
 
 * Initialize concurrent_start variable
 gen concurrent_start = 0
@@ -140,8 +144,6 @@ forvalues j = 1/10 {
 * Create a flag for cases where Thiazide started without concurrent meds
 gen thiazide_solo_start = (first_thiazide_occurrence == 1 & first_thiazide_daysstart != . & concurrent_start == 0)
 
-* Create a flag for cases where MRA started without concurrent meds
-gen mra_solo_start = (first_mra_daysstart != . & concurrent_start == 0)
 
 * Explanation:
 * It compares the Thiazide daysstart with the other daysstart1 to daysstart10 of medname1 to medname10 that are NOT Thiazides, and marks concurrent_start as 1 if there's another medication that shares the same daysstart with the Thiazide.
