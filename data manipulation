@@ -1,0 +1,18 @@
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/bp_med_log_v2.dta", clear
+
+* drop duplicated 
+sort maskid formdays
+quietly by maskid formdays:  gen dup = cond(_N==1,0,_n)
+tab dup
+drop if dup == 2 
+drop if dup == 3
+
+// Define the list of medication names to search for
+// Create a local macro with the list of medications
+local medlist `""spironolactone hct2" "spironolactone hctz" "spironolactone hydrochlorot" "spironolactone hydrochlorothiazide" "spironolactone-hctz" "spironolactone/HCTZ" "spironalactone/htctz" "spironactone-hctz" "Spironolactone-HCTZ" "HCTZ-Aldactone""'
+
+forvalues i = 1/10 { 
+    foreach med of local medlist {
+        drop if medname`i' == "`med'"
+    }
+} 
