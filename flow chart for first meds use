@@ -1,0 +1,18 @@
+graph TD
+    A[Start: Patient Medication Data] --> B[Generate Thiazide Indicators]
+    B --> C[Create 'any_thiazide' Variable]
+    C --> D{First Thiazide Occurrence?}
+    D -->|Yes| E[Record First Occurrence]
+    D -->|No| F[Check for Multiple Starts]
+    E --> G[Capture formdays & daysstart]
+    G --> H[Propagate First Occurrence Data]
+    H --> I{Concurrent Medications?}
+    I -->|Yes| J[Flag Concurrent Start]
+    I -->|No| K[Flag Solo Start]
+    F --> L[Flag Subsequent Starts]
+    J --> M[Final Dataset]
+    K --> M
+    L --> M
+    M --> N[End: Analysis Ready Data]
+
+    
