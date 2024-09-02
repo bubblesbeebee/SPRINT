@@ -1,5 +1,5 @@
 # 1
-cons: takes too long to run the code - took more than 5 mins 
+cons: takes too long to run the code - took more than 10 mins !!!
 
 * Ensure the data is sorted by maskid and formdays
 sort maskid formdays
@@ -100,3 +100,56 @@ label variable multiple_thiazide_daystart "More than one occurrence of thiazide_
 
 
 #3 
+Cons: the problem is it does not propagate down- it is restricted to the FIRST occurrence of the thiazide daystart
+
+* Initialize concurrent_start variable
+gen concurrent_start = 0
+
+* Check for concurrent medication starts only for the first Thiazide occurrence
+forvalues j = 1/10 {
+    replace concurrent_start = 1 if first_thiazide_occurrence == 1 & daysstart`j' == first_thiazide_daysstart & !flag_thiazide`j' & first_thiazide_daysstart != .
+}
+
+* Create a flag for cases where Thiazide started without concurrent meds
+gen thiazide_solo_start = (first_thiazide_occurrence == 1 & first_thiazide_daysstart != . & concurrent_start == 0)
+
+
+* Explanation:
+* It compares the Thiazide daysstart with the other daysstart1 to daysstart10 of medname1 to medname10 that are NOT Thiazides, and marks concurrent_start as 1 if there's another medication that shares the same daysstart with the Thiazide.
+
+Certainly. Let's break down this code and explain its functionality:
+
+
+
+1. `gen concurrent_start = 0`
+   - This line creates a new variable called `concurrent_start` and initializes it to 0 for all rows.
+   - This variable will be used to flag cases where a thiazide medication starts on the same day as another non-thiazide medication.
+
+2. The `forvalues` loop:
+   ```stata
+   forvalues j = 1/10 {
+       replace concurrent_start = 1 if first_thiazide_occurrence == 1 & daysstart`j' == first_thiazide_daysstart & !flag_thiazide`j' & first_thiazide_daysstart != .
+   }
+   ```
+   - This loop iterates through all 10 potential medication slots (assuming there are medname1 to medname10 and daysstart1 to daysstart10).
+   - It sets `concurrent_start` to 1 if all of these conditions are true:
+     a. `first_thiazide_occurrence == 1`: This is the first occurrence of a thiazide for this patient.
+     b. `daysstart`j' == first_thiazide_daysstart`: The start date of this medication matches the start date of the first thiazide.
+     c. `!flag_thiazide`j'`: This medication is not itself a thiazide (the `!` means "not").
+     d. `first_thiazide_daysstart != .`: The first thiazide start date is not missing.
+
+3. `gen thiazide_solo_start = (first_thiazide_occurrence == 1 & first_thiazide_daysstart != . & concurrent_start == 0)`
+   - This creates a new variable `thiazide_solo_start`.
+   - It's set to 1 (true) if:
+     a. This is the first occurrence of a thiazide (`first_thiazide_occurrence == 1`)
+     b. The thiazide start date is not missing (`first_thiazide_daysstart != .`)
+     c. No other medications started on the same day as the thiazide (`concurrent_start == 0`)
+
+In essence, this code is doing the following:
+
+1. It's looking at the first occurrence of a thiazide medication for each patient.
+2. It checks if any other non-thiazide medications started on the same day as this first thiazide.
+3. If any such medications are found, it marks `concurrent_start` as 1.
+4. It then creates a separate flag for cases where a thiazide was started without any other medications starting on the same day.
+
+This analysis could be useful for understanding prescription patterns, such as whether thiazides are typically prescribed alone or in combination with other medications. It might also be relevant for studying potential drug interactions or treatment strategies.
