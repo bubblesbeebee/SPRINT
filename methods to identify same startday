@@ -74,3 +74,29 @@ In essence, this code is identifying patients who are on thiazide medications,
 recording the earliest start date for these medications, and then flagging cases where 
 multiple thiazide medications were started on the same day
 
+###  
+* Generate a column to store the daystart for thiazide medications
+sort maskid formdays
+gen thiazide_daystart = .
+forvalues i = 1/10 {
+    replace thiazide_daystart = daysstart`i' if (strpos(lower(medname`i'), "hctz") > 0 | strpos(lower(medname`i'), "hct") > 0 | strpos(lower(medname`i'), "hydro") > 0 | strpos(lower(medname`i'), "chlorth") > 0 | strpos(lower(medname`i'), "chloro") > 0 | strpos(lower(medname`i'), "azide") > 0 | strpos(lower(medname`i'), "lidone") > 0)| strpos(lower(medname`i'), "indapa") > 0 |strpos(lower(medname`i'), "metolaz") > 0 |strpos(lower(medname`i'), "diurel") > 0
+}
+
+* Generate a variable to count occurrences
+gen thiazide_daystart_count = 0
+
+* Loop through daysstart1 to daysstart10
+forvalues i = 1/10 {
+    replace thiazide_daystart_count = thiazide_daystart_count + 1 if daysstart`i' == thiazide_daystart & thiazide_daystart != .
+}
+
+* Generate indicator for multiple occurrences
+gen multiple_thiazide_daystart = (thiazide_daystart_count > 1) if thiazide_daystart != .
+
+* Optional: Label the new variable
+label variable multiple_thiazide_daystart "More than one occurrence of thiazide_daystart in daysstart1-10"
+
+
+
+
+#3 
