@@ -279,13 +279,6 @@ Output:
 . replace cohort = 1 if thiazide_occurrence == 1 & thiazide_solo_start == 1
 (3,023 real changes made)
 
-. 
-. distinct maskid if cohort ==1
-
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |       3023       3023
 
 
 . distinct maskid if thiazide_occurrence == 1
@@ -295,13 +288,6 @@ Output:
 --------+----------------------
  maskid |      91185       5694
 
-. distinct maskid if thiazide_solo_start == 1
-
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |       3023       3023
-
 . distinct maskid if thiazide== 1
 
         |        Observations
@@ -309,8 +295,20 @@ Output:
 --------+----------------------
  maskid |      76216       5694
 
+. distinct maskid if thiazide_solo_start == 1
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |       3023       3023
 
 
+. distinct maskid if cohort ==1
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |       3023       3023
 
 
 * To know the previous visit before thiazide turns 1
@@ -444,15 +442,17 @@ replace cohort2 = 1 if thiazide == 1 & thiazide_occurrence == 1 & med_category_p
 
 Output: 
 
-        . distinct maskid if cohort2 ==1
-        
-                |        Observations
-                |      total   distinct
-        --------+----------------------
-         maskid |      31937       3251
+. distinct maskid if cohort2 ==1
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |       2907       2907
 
 
-* explanation: the 768 if from the criteria that no other meds share the SAME start day w thiazide. It does not exclude the meds that 
+
+
+* explanation: the 3023 is from the criteria that no other meds share the SAME start day w thiazide. It does not exclude the meds that 
 was started a couple of days before or after thiazide was started. The med_category list will reflect the changes of medications across visits, 
 so it is a more robust way to ensure no other meds were started other than a thiazide. 
 
@@ -471,28 +471,23 @@ by maskid: egen fourth_SBP_filled = max(fourth_SBP)
 
 * Find out who has missing SBP at baseline
 
-gen missing_SBP_baseline = .
-replace missing_SBP_baseline = 1 if cohort ==1 & cohort !=. & first_SBP_filled !=.
+gen have_SBP_baseline = .
+replace have_SBP_baseline = 1 if cohort2 ==1 & cohort2 !=. & first_SBP_filled !=.
 
 Output: 
 
-            . distinct maskid if missing_SBP_baseline ==1 & cohort2 ==1
-            
-                    |        Observations
-                    |      total   distinct
-            --------+----------------------
-             maskid |      31205       3160
-            
-            . distinct maskid if missing_SBP_baseline ==1 & cohort ==1
-            
-                    |        Observations
-                    |      total   distinct
-            --------+----------------------
-             maskid |      32380       3297
+            . . distinct maskid if have_SBP_baseline ==1 & cohort2 ==1
+		
+		        |        Observations
+		        |      total   distinct
+		--------+----------------------
+		 maskid |       2832       2832
+		
+		
 
                
 
-* explanation: out of the total 3251 eligible subjects (cohort2 ==1), 3251-3297 has missing SBP 
+* explanation: out of the total 2907 eligible subjects (cohort2 ==1), 2907 - 2832 has missing SBP 
 
 * save as masterdata 
 save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_thiazide_9.1.dta"
@@ -509,11 +504,13 @@ drop if min_thiazide_daystart ==.
 
 Output: 
                 . distinct maskid if cohort2 ==1
-                  
-                          |        Observations
-                          |      total   distinct
-                  --------+----------------------
-                   maskid |      31937       3251
+
+		        |        Observations
+		        |      total   distinct
+		--------+----------------------
+		 maskid |       2907       2907
+		
+
 
 
 
@@ -630,22 +627,17 @@ Inside the process_patient function, the list day_diff_pre_values is used to sto
 
 
 * back to STATA 16
-import delimited "/Users/jiawei/Downloads/bp_pre_thiazide_results_test_9.1.csv", clear 
+import delimited "/Users/jiawei/Downloads/bp_pre_thiazide_results_test_9.1 (1).csv", clear 
 
 Output: (can export to excel for visibility) 
-
-  maskid	formdays	seatsys	day_diff_pre	consistent_med	min_thiazide_daystart	bp_pre_thiazide_visit_1	bp_pre_thiazide_visit_2	bp_pre_thiazide_visit_3	bp_pre_thiazide_visit_4	mean_day_diff_pre	avg_bp_pre_thiazide
-  S00007	0	145	2	1	2	145				2	145
-  S00010	183	147	1	1	184	147				1	147
-  S00046	0	126	0	1	0	126				0	126
-  S00103	0	133	0	1	0	133				0	133
-  S00109	0	137	36	1	36	137				20.5	137
-  S00109	14		22	1	36					20.5	
-  S00109	31	122	5	1	36		122			20.5	122
-  S00128	0	125	0	1	0	125				0	125
-  S00163	0	120	1	1	1	120				1	120
-  S00193	32	137	60	1	92	137				30.5	137
-  
+maskid	formdays	seatsys	day_diff_pre	consistent_med	min_thiazide_daystart	bp_pre_thiazide_visit_1	bp_pre_thiazide_visit_2	bp_pre_thiazide_visit_3	mean_day_diff_pre	max_day_diff_pre	avg_bp_pre_thiazide
+S00007	0	145	2	1	2	145			2	2	145
+S00010	183	147	1	1	184	147			1	1	147
+S00046	0	126	0	1	0	126			0	0	126
+S00103	0	133	0	1	0	133			0	0	133
+S00109	0	137	36	1	36	137			20.5	36	137
+S00109	14		22	1	36				20.5	36	
+S00109	31	122	5	1	36		122		20.5	36	122
 
 
 save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/preThiazide_bpavg_frmpython9.1.dta"
@@ -673,62 +665,58 @@ merge m:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaW
 sort maskid formdays
 
 Output: 
-            
-                              Result                           # of obs.
-                -----------------------------------------
-                not matched                       187,463
-                    from master                   187,463  (_merge==1)
-                    from using                          0  (_merge==2)
-            
-                matched                             5,140  (_merge==3)
-                -----------------------------------------
-                . distinct maskid if _merge ==3
-                
-                        |        Observations
-                        |      total   distinct
-                --------+----------------------
-                 maskid |       5140       3499
+             Result                           # of obs.
+    -----------------------------------------
+    not matched                       187,535
+        from master                   187,535  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                             6,913  (_merge==3)
+    -----------------------------------------
+
+. distinct maskid if _merge ==3
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |       6913       5252
 
 
-                (this 3499 number is different from prior, because I did not set cohort == 1 or cohort2 ==1 
-                pre-MRA BP calculation. The purpose is to get systolic BP baseline for every one on      thiazide and apply the filters afterwards)
+(this 5252 number is different from prior, because I did not set cohort == 1 or cohort2 ==1 for pre-MRA BP calculation. The purpose is to get systolic BP baseline for every one on thiazide and apply the filters afterwards)
 
               . distinct maskid if cohort2 ==1 & first_SBP_filled !=.
-              
-                      |        Observations
-                      |      total   distinct
-              --------+----------------------
-               maskid |      31205       3160
+		
+		        |        Observations
+		        |      total   distinct
+		--------+----------------------
+		 maskid |       2832       2832
 
-
-                (this number 3160 is the same as prior at line 372) 
+                (this number 3160 is the same as prior at line 506) 
 
 
 * fill up the entire column with the new first SBP avg 
 egen new_first_sbp_avg_filled = min(new_first_sbp_avg) , by (maskid)
 
-                . distinct maskid if cohort2 ==1 & new_first_sbp_avg_filled !=.
-                
-                               
-                      |        Observations
-                      |      total   distinct
-              --------+----------------------
-               maskid |      28386       2879
-              
+              . distinct maskid if cohort2 ==1 & new_first_sbp_avg_filled !=.
+		
+		        |        Observations
+		        |      total   distinct
+		--------+----------------------
+		 maskid |       2791       2791
+
 
 by maskid: egen new_first_sbp_avg_filled_2 = max(new_first_sbp_avg) 
 
-                . distinct maskid if cohort2 ==1 & new_first_sbp_avg_filled_2 !=.
-                
-                 
-                      |        Observations
-                      |      total   distinct
-              --------+----------------------
-               maskid |      28386       2879
-              
+              . distinct maskid if cohort2 ==1 & new_first_sbp_avg_filled_2 !=.
+		
+		        |        Observations
+		        |      total   distinct
+		--------+----------------------
+		 maskid |       2791       2791
+		           
 
 * either egen min or max does not matter because the there is only ONE new_first_sbp_avg for each maskid 
-* hence the number is the same, 2879 as shown above. 
+* hence the number is the same, 2791 as shown above. 
 * note that the number decreased from 634 to 2879 after the expanded criteria
 
 * The mean days SBP was obtained prior to thiazide initiation
