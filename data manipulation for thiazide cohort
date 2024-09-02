@@ -57,12 +57,13 @@ forvalues i = 1/10 {
 
 Output: 
                      
-          . distinct maskid 
-          
-                  |        Observations
-                  |      total   distinct
-          --------+----------------------
-           maskid |     178135       9251
+. distinct maskid if thiazide ==1 
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |      88354       6675
+
 
 
 * Sort the data by maskid and formdays
@@ -95,6 +96,17 @@ gen any_thiazide = (flag_thiazide1 + flag_thiazide2 + flag_thiazide3 + flag_thia
 * Identify the first occurrence of thiazide for each maskid
 by maskid (formdays): gen first_thiazide_occurrence = any_thiazide == 1 & sum(any_thiazide) == 1
 
+
+Output: 
+
+		. distinct maskid if first_thiazide_occurrence == 1
+		
+		        |        Observations
+		        |      total   distinct
+		--------+----------------------
+		 maskid |       6675       6675
+
+
 * explanation: sum(any_thiazide) is a running sum of the any_thiazide variable within each maskid group.
 It equals 1 only for the first occurrence of a thiazide within each group. 
 For each maskid, the function goes through the rows in order of formdays.
@@ -105,9 +117,13 @@ For any subsequent rows where any_thiazide is 1, the second condition (sum(any_t
 gen first_thiazide_formdays = formdays if first_thiazide_occurrence == 1
 by maskid: egen first_thiazide_formdays_filled = min(first_thiazide_formdays)
 
-* explanation: Since we only filled in first_thiazide_formdays for the first occurrence, this minimum will be the formdays of the first thiazide occurrence. This function allows us to know when thiazide (in regards of formdays) was first started for a patient, regardless of which row we're looking at for that patient.
+* explanation: Since we only filled in first_thiazide_formdays for the first occurrence, 
+this minimum will be the formdays of the first thiazide occurrence. This function allows us to know when thiazide (in regards of formdays) was first started for a patient, regardless of which row we're looking at for that patient.
 
 
+
+**** This might not work 
+gen first_thiazide_daysstart =.
 
 forvalues j = 1/10 {
     replace first_thiazide_daysstart = daysstart`j' if first_thiazide_occurrence == 1 & flag_thiazide`j' == 1
@@ -118,15 +134,32 @@ by maskid: egen first_thiazide_daysstart_filled = min(first_thiazide_daysstart)
 
 
 
-* Check for multiple thiazide starts
-by maskid (formdays): gen multiple_thiazide_starts = sum(any_thiazide) > 1 & any_thiazide == 1
+*** Try this: 
+* Generate a flag for each medname column for thiazide
+forvalues i = 1/10 {
+    gen flag_sei`i' =  strpos(lower(medname`i'), "hctz") > 0 | strpos(lower(medname`i'), "hct") > 0 | strpos(lower(medname`i'), "hydro") > 0 | strpos(lower(medname`i'), "chlorth") > 0 | strpos(lower(medname`i'), "chloro") > 0 | strpos(lower(medname`i'), "indapa") > 0 |strpos(lower(medname`i'), "metolaz") > 0 |strpos(lower(medname`i'), "diurel") > 0 | strpos(lower(medname`i'), "azide") > 0 | strpos(lower(medname`i'), "lidone") > 0
+}
 
-* Check for multiple thiazide starts
-gen multiple_thiazide_starts = . 
-by maskid (formdays): replace multiple_thiazide_starts = 1 if any_thiazide & formdays > first_thiazide_daysstart_filled & first_thiazide_daysstart_filled != .
+* Create variables to store the first occurrence
+gen first_sei_medname = ""
+gen first_sei_daysstart ==. 
+qui forvalues i = 1/`=_N' {
+    local first_found = 0
+    forvalues j = 1/10 {
+        if flag_sei`j'[`i'] == 1 {
+            if first_sei_daysstart[`i'] == . | daysstart`j'[`i'] < first_sei_daysstart[`i'] { 
+                replace first_sei_daysstart = daysstart`j'[`i'] if _n == `i'
+                replace first_sei_medname = medname`j'[`i'] if _n == `i'
+                local first_found = 1
+            }
+        }
+    }
+}
 
-* explanation: For each patient, going through their data chronologically, if we find thiazide on a day that's later than the day we first saw thiazide, mark this patient as having multiple thiazide starts.
-This helps identify patients who may have stopped and restarted thiazide, or switched between different thiazide medications. The multiple_thiazide_starts flag will be set to 1 for these patients, indicating that they had more than one distinct period of thiazide medication use.
+* this above output captures the changes in daysstart- some maskid continue to take the thiazide meds
+but the daysstart changed. Not sure why- possibly change in dose or refill. 
+* this above ouput captures the exact name of thiazide started in case subsequent analysis warrants this information
+
 
 * Check for concurrent medication starts
 * Ensure the data is sorted by maskid and formdays
@@ -154,11 +187,12 @@ gen thiazide_solo_start = (first_thiazide_occurrence == 1 & first_thiazide_dayss
 Output: 
 
             . distinct maskid if thiazide_solo_start ==1
-            
-                    |        Observations
-                    |      total   distinct
-            --------+----------------------
-             maskid |      65062       5783
+
+		        |        Observations
+		        |      total   distinct
+		--------+----------------------
+		 maskid |       3192       3192
+
 
 * Keep the 1st observation of thiazide being started 
 sort maskid formdays
@@ -169,46 +203,48 @@ distinct maskid if thiazide == 1 & min_thiazide_daystart < 0
 distinct maskid if thiazide == 1 & min_thiazide_daystart >= 0
 
 Output: 
-            . distinct maskid if thiazide == 1 & min_thiazide_daystart < 0
-            
-                    |        Observations
-                    |      total   distinct
-            --------+----------------------
-             maskid |      38986       2690
-            
-            . distinct maskid if thiazide == 1 & min_thiazide_daystart >= 0
-            
-                    |        Observations
-                    |      total   distinct
-            --------+----------------------
-             maskid |      49367       3985
-            
+
+. distinct maskid if thiazide == 1 & min_thiazide_daystart < 0
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |      12138        981
+
+. distinct maskid if thiazide == 1 & min_thiazide_daystart >= 0
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |      76216       5694
 
                
 
 drop if min_thiazide_daystart < 0
 
 Output: 
-          . distinct maskid 
-          
-                  |        Observations
-                  |      total   distinct
-          --------+----------------------
-           maskid |     125454       6561
-          
-          . distinct maskid if thiazide_solo_start ==1
-          
-                  |        Observations
-                  |      total   distinct
-          --------+----------------------
-           maskid |      38095       3531
-          
-          . distinct maskid if thiazide==1
-          
-                  |        Observations
-                  |      total   distinct
-          --------+----------------------
-           maskid |      49367       3985
+
+. distinct maskid 
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |     159316       8270
+
+. distinct maskid if thiazide_solo_start ==1
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |       3023       3023
+
+. distinct maskid if thiazide==1
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |      76216       5694
+
 
 
 
@@ -222,18 +258,59 @@ Output:
 sort maskid formdays
 by maskid: gen thiazide_occurrence = sum(thiazide == 1 & (thiazide[_n-1] == 0 | _n == 1 | formdays == 0))
 
+* excerpt: 
+maskid	formdays	medname1	thiazide	first_thiazide_occurrence	first_thiazide_formdays	first_thiazide_formdays_filled	first_thiazide_daysstart	first_thiazide_daysstart_filled	concurrent_start	thiazide_solo_start	min_thiazide_daystart	thiazide_occurrence
+S00296	0	lisinopril	1	1	0	0	1	1	0	1	1	1
+S00296	29	lisinopril	1	0		0		1	0	0	1	1
+S00296	86	lisinopril	0	0		0		1	0	0	1	1
+S00296	316	lisinopril	1	0		0		1	0	0	1	2
+S00296	393	lisinopril	1	0		0		1	0	0	1	2
+S00296	482	lisinopril	1	0		0		1	0	0	1	2
+
+* if thiazide turns from 1 to 0 and then 1 again, it will be marked as occurrence == 2
+
+
 * Generate a thiazide cohort
 gen cohort = .
 replace cohort = 1 if thiazide_occurrence == 1 & thiazide_solo_start == 1
 
 
 Output: 
-            . distinct maskid if cohort ==1
-            
-                    |        Observations
-                    |      total   distinct
-            --------+----------------------
-             maskid |      33156       3397
+. replace cohort = 1 if thiazide_occurrence == 1 & thiazide_solo_start == 1
+(3,023 real changes made)
+
+. 
+. distinct maskid if cohort ==1
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |       3023       3023
+
+
+. distinct maskid if thiazide_occurrence == 1
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |      91185       5694
+
+. distinct maskid if thiazide_solo_start == 1
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |       3023       3023
+
+. distinct maskid if thiazide== 1
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |      76216       5694
+
+
+
 
 
 * To know the previous visit before thiazide turns 1
