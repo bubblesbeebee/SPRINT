@@ -110,28 +110,29 @@ BP data without meds data presumably the maskid had the observations removed fro
 * Sort the data by maskid and formdays
 sort maskid formdays
 
-* Generate the thiazide column, thiazide use ==1 
+* Generate the mra column, mra use ==1 
 
 gen MRA = 0
 forvalues i = 1/10 {
-    replace MRA = 1 if (strpos(lower(medname`i'), "spir") > 0 |(strpos(lower(medname`i'), "actone") > 0 | strpos(lower(medname`i'), "inspra") > 0 | strpos(lower(medname`i'), "eple") > 0 | strpos(lower(medname`i'), "aldac") > 0)
+    replace MRA = 1 if (strpos(lower(medname`i'), "spir") > 0 |(strpos(lower(medname`i'), "actone") > 0 | strpos(lower(medname`i'), "inspra") > 0 | strpos(lower(medname`i'), "eple") > 0 | strpos(lower(medname`i'), "aldac") > 0))
 }
 
 
 
-
-
 Output: 
-. distinct maskid if MRA ==1 
-
-
+		. distinct maskid if MRA ==1 
+		
+		        |        Observations
+		        |      total   distinct
+		--------+----------------------
+		 maskid |      11736       1072
 		
 
 * Now remove on MRA at baseline
-
 * Generate a flag for each medname column for MRA 
+
 forvalues i = 1/10 {
-    gen flag_mra`i' = strpos(lower(medname`i'), "spir") > 0 |(strpos(lower(medname`i'), "actone") > 0 | strpos(lower(medname`i'), "eple") > 0 | strpos(lower(medname`i'), "aldac") > 0 | strpos(lower(medname`i'), "inspra") > 0
+    gen flag_mra`i' = strpos(lower(medname`i'), "spir") > 0 | strpos(lower(medname`i'), "actone") > 0 | strpos(lower(medname`i'), "eple") > 0 | strpos(lower(medname`i'), "aldac") > 0 | strpos(lower(medname`i'), "inspra") > 0
 }
 
 * Create an indicator for any MRA use
@@ -159,7 +160,7 @@ this minimum will be the formdays of the first mra occurrence. This function all
 sort maskid formdays
 gen mra_daystart = .
 forvalues i = 1/10 {
-    replace mra_daystart = daysstart`i' if (strpos(lower(medname`i'), "spir") > 0 | strpos(lower(medname`i'), "eple") > 0 | strpos(lower(medname`i'), "aldac") > 0 | (strpos(lower(medname`i'), "actone") > 0 |(lower(medname`i'), "inspra") > 0)
+    replace mra_daystart = daysstart`i' if (strpos(lower(medname`i'), "spir") > 0 | strpos(lower(medname`i'), "eple") > 0 | strpos(lower(medname`i'), "aldac") > 0 | strpos(lower(medname`i'), "actone") > 0 | strpos(lower(medname`i'), "inspra") > 0)
 }
 
 gen first_mra_daysstart = .
@@ -180,6 +181,23 @@ bys maskid: egen min_mra_daystart = min(first_mra_daysstart)
 distinct maskid if mra == 1 & min_mra_daystart < 0
 distinct maskid if mra == 1 & min_mra_daystart >= 0
 
+. distinct maskid if MRA == 1 & min_mra_daystart < 0
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |       2049        141
+
+. distinct maskid if MRA == 1 & min_mra_daystart >= 0
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |       9688        931
+
+
+
+
 * Generate a flag variable to identify observations with min_mra_daystart < 0
 gen flag = (min_mra_daystart < 0)
 
@@ -195,7 +213,6 @@ drop flag maskid_flag
 
 
 * Now after removing those on MRA at baseline, work on removing those on MRA combo meds
-
 
 // Define the list of medication names to search for
 // Create a local macro with the list of medications
@@ -219,11 +236,14 @@ keep if maskid_flag == 0
 drop flag maskid_flag
 
 
-
-
 Output: 
 
+. distinct maskid if MRA ==1
 
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |       9604        925
 
 
 
@@ -255,12 +275,14 @@ keep if maskid_flag == 0
 drop flag maskid_flag
 
 
-
-
 Output: 
 
-			
+. distinct maskid if MRA ==1
 
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |       5169        549
 
 
 * generate a cumulative count of how many times mra treatment starts for each patient
@@ -271,15 +293,44 @@ Output:
     Because mra use at baseline is already removed, if mra use daystart = formdays 0 
 
 sort maskid formdays
-by maskid: gen mra_occurrence = sum(mra == 1 & (mra[_n-1] == 0 | _n == 1 | formdays == 0))
+by maskid: gen mra_occurrence = sum(MRA == 1 & (MRA[_n-1] == 0 | _n == 1 | formdays == 0))
+
+
+Output: 
+
+		. distinct maskid if mra_occurrence == 1
+		
+		        |        Observations
+		        |      total   distinct
+		--------+----------------------
+		 maskid |       7021        549
+		
+		. distinct maskid if mra_occurrence == 2
+		
+		        |        Observations
+		        |      total   distinct
+		--------+----------------------
+		 maskid |        838         93
+
 
 * keep only the first occurrence
 drop if mra_occurrence > 1 & mra_occurrence !=.
 			
-			
+	
+		. drop if mra_occurrence > 1 & mra_occurrence !=.
+		(964 observations deleted)
+		
+		. distinct maskid if mra_occurrence == 1
+		
+		        |        Observations
+		        |      total   distinct
+		--------+----------------------
+		 maskid |       7021        549
+
+   
 * To know the previous visit before MRA turns 1
 gen prior_onMRA = .
-by maskid: replace prior_onMRA = formdays[_n-1] if mra == 1 & (mra[_n-1] == 0 | _n == 1) & mra_occurrence == 1
+by maskid: replace prior_onMRA = formdays[_n-1] if MRA == 1 & (MRA[_n-1] == 0 | _n == 1) & mra_occurrence == 1
 
 * This subsequent code ensures that only the 1st occurrence is used
 replace prior_onMRA = . if mra_occurrence >= 2 & prior_onMRA != .
@@ -289,8 +340,8 @@ sort maskid formdays
 
 * Generate and fill up the entire column for each MRA occurrence
 * Generate variables for the first and second occurrences of MRA
-by maskid: gen first_onMRA = formdays if mra == 1 & sum(mra) == 1
-by maskid: gen second_onMRA = formdays if mra == 1 & sum(mra) == 2
+by maskid: gen first_onMRA = formdays if MRA == 1 & sum(MRA) == 1
+by maskid: gen second_onMRA = formdays if MRA == 1 & sum(MRA) == 2
 
 * Carry forward non-missing values in the column 'prior_onMRA'
 bysort maskid (formdays): gen prior_onMRA_filled = prior_onMRA if prior_onMRA != .
@@ -307,9 +358,9 @@ by maskid: egen first_onMRA_filled = max(first_onMRA)
 by maskid: egen second_onMRA_filled = max(second_onMRA)
 
 * Generate and fill in the third and fourth occurrences of MRA
-by maskid: gen third_onMRA = formdays if mra == 1 & sum(mra) == 3
+by maskid: gen third_onMRA = formdays if MRA == 1 & sum(MRA) == 3
 by maskid: egen third_onMRA_filled = max(third_onMRA)
-by maskid: gen fourth_onMRA = formdays if mra == 1 & sum(mra) == 4
+by maskid: gen fourth_onMRA = formdays if MRA == 1 & sum(MRA) == 4
 by maskid: egen fourth_onMRA_filled = max(fourth_onMRA)
 
 
@@ -350,9 +401,6 @@ gen med_category = med_oxin + med_olol + med_ipine_azem + med_thia_chlo_hct + me
 label variable med_category "Sum of medication categories"
 
 *this works for combination meds as well- for example, atenolol, amlodipine/benazapril, will sum up to 1007 ( 1000 + 5 + 2)
-
-* Label the new variable
-label variable med_category "Sum of medication categories"
 
 * Clean up intermediate variables OR keep them for later 
 drop med_oxin med_olol med_ipine_azem med_mra med_fur_bum_tors med_hydral_azine med_pril_artan med_idine_clon med_minoxi  med_triam med_guanfacine 
@@ -411,17 +459,22 @@ keep if maskid_flag == 0
 drop flag maskid_flag
 
 
-2156 --> 2056 
+549 --> 481  
 
 
 Output: 
 
+. distinct maskid if MRA == 1
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |       3987        481
 
 
-
-* explanation: the 2056 is from the criteria that no other meds share the SAME start day w thiazide. It does not exclude the meds that 
-was started a couple of days before or after thiazide was started. The med_category list will reflect the changes of medications across visits, 
-so it is a more robust way to ensure no other meds were started other than a thiazide. 
+* explanation: the 549 is from the criteria that no other meds share the SAME start day w mra. It does not exclude the meds that 
+was started a couple of days before or after mra was started. The med_category list will reflect the changes of medications across visits, 
+so it is a more robust way to ensure no other meds were started other than a mra. 
 
 * Fill up the BP columns
 * Generate variables for SBP at the time of MRA occurrences
