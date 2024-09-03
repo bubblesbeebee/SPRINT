@@ -465,15 +465,11 @@ gen eligible_missing_first_SBP = (visit_diff_prior_and1_eligible == 1 & med_cate
 gen new_first_sbp = first_SBP_filled  
 replace new_first_sbp = prior_SBP if missing(first_SBP_filled) & eligible_missing_first_SBP == 1
 
-* However, there could be multiple visits in that 60 days prior to thiazide start day, the above codes only take
-the most proximal visit into consideration. 
-* Hence, uses python to loop through prior visits as long as 
-1) within 60 days from thiazide initiation
-2) the medication list stays the same except for the addition of thiazide during thiazide start day
+* Multiple visits may occur within 60 days before MRA initiation. The above code only considers the most recent visit.
+* To account for all prior visits within 60 days and with unchanged medication lists (except for the addition of MRA), use Python to loop through these visits.
 
 
-
-* If I were to use Python for this filters, I can actually not perform line 588 to 610
+* If I were to use Python for this filters, I can actually not perform this part above
 
 Output: 
 . distinct maskid if new_first_sbp !=. 
@@ -487,70 +483,33 @@ Output:
 
 
 * save as masterdata 
-save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_thiazide_9.3.dta"
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_mra_9.3.dta"
 
 * Generate a subdata for calculation of average BP pre-MRA initiation 
-use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_thiazide_9.3.dta"
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_mra_9.3.dta"
 sort maskid formdays
 
-gen day_diff_pre = min_thiazide_daystart - formdays
+gen day_diff_pre = min_mra_daystart - formdays
 
-* The thiazide initiation date should be greater than the visit date (FORMDAYS) because I want to obtain blood pressure (BP) values from visits prior to the initiation of thiazide.
-* In a previous analysis, I discovered that I am short of around 20 individuals who has baseline SBP compared to who has first_SBP_fillled by applying the condition "day_diff_pre < 0" using "min_thiazide_daystart" to calculate the day difference for later calculation of averaged baseline SBP. This happened because, for some participants, the date when thiazide was first recorded in the dataset (FORMDAYS) did not match the actual start date of the medication. It appears that these medications were initiated between visits.
-
-For example:
-Participant s02400 started thiazide on day 1752, but it was first recorded in the dataset on day 1782, with a systolic blood pressure measurement available for day 1782 but not for day 1752. the difference is 30 days apart- the day_diff_pre will be -30 whereas the day_diff_pre_2 will be 0 as seen in row 3 shown below. the day_diff_pre of -30 should be excluded because the meds is started 30 days PRIOR to the formday 1782 visit and hence
-the SBP on formdays 1782 is a post-thiazide BP change. 
-
-Excerpt of such data discrepancies: 
-Output: 
-
-maskid	formdays	seatsys	thiazide	first_thiazide_formdays_filled	first_thiazide_daysstart_filled	min_thiazide_daystart	first_SBP_filled	new_first_sbp	day_diff_pre	day_diff_pre_2	differentformdaysstartday	diff
-S02400	1642	163	0	1782	1752	1752	123	123	110	140	1	-30
-S02400	1662	145	0	1782	1752	1752	123	123	90	120	1	-30
-S02400	1782	123	1	1782	1752	1752	123	123	-30	0	1	-30
+* The mra initiation date should be greater than the visit date (FORMDAYS) because I want to obtain blood pressure (BP) values from visits prior to the initiation of mra.
+For some participants, the date when mra was first recorded in the dataset (FORMDAYS) did not match the actual start date of the medication. It appears that these medications were initiated between visits.
 
 
 
 
-
-gen day_diff_pre_2 = first_thiazide_formdays_filled - formdays
+gen day_diff_pre_2 = first_mra_formdays_filled - formdays
 gen diff = day_diff_pre - day_diff_pre_2 
 
 gen differentformdaysstartday = 1 if day_diff_pre != day_diff_pre_2 
-(67,972 missing values generated)
-
-			. distinct maskid if differentformdaysstartday == 1 
+distinct maskid if differentformdaysstartday == 1 
 			
-			        |        Observations
-			        |      total   distinct
-			--------+----------------------
-			 maskid |      12071        685
+summarize diff, detail
 			
-
-		
-			. summarize diff, detail
-			
-			                            diff
-			-------------------------------------------------------------
-			      Percentiles      Smallest
-			 1%          -49           -366
-			 5%            0           -366
-			10%            0           -366       Obs              35,639
-			25%            0           -366       Sum of Wgt.      35,639
-			
-			50%            0                      Mean          -.3737759
-			                        Largest       Std. Dev.      25.25771
-			75%            1           1069
-			90%            1           1069       Variance        637.952
-			95%            1           1069       Skewness       14.62392
-			99%           12           1069       Kurtosis       807.0759
-
-
-
+			                          
 
 * the histogram showed mostly in the range of plus minus 10-20. 
-* therefore, I will use "first_thiazide_daystart" or "min_thiazide_daystart" over "first_thiazide_formdays" 
+
+* therefore, I will use "first_mra_daystart" or "min_mra_daystart" over "first_mra_formdays" 
 
 drop if day_diff_pre < 0 & day_diff_pre !=.
 
@@ -558,7 +517,7 @@ drop if day_diff_pre < 0 & day_diff_pre !=.
 drop if day_diff_pre > 60 & day_diff_pre !=.
 
 * Instead of sorting by formdays
-* Sort by day_diff_pre so the first observation of the med_category, which is the day thiazide is started,
+* Sort by day_diff_pre so the first observation of the med_category, which is the day mra is started,
 * can be used as a reference for prior visit med_category
 
 sort maskid day_diff_pre
@@ -567,54 +526,31 @@ by maskid: gen consistent_med = (med_category == med_category[1])
 
 * after I removed the day_diff_pre of >60 and <0, the diff is less skewed- looks like the outliers are gone now: 
 
-		. summarize diff, detail
-		
-                            diff
--------------------------------------------------------------
-      Percentiles      Smallest
- 1%          -27           -366
- 5%            0           -166
-10%            0           -154       Obs               2,976
-25%            0           -154       Sum of Wgt.       2,976
 
-50%            0                      Mean          -.0967742
-                        Largest       Std. Dev.      12.48017
-75%            1             63
-90%            1             98       Variance       155.7547
-95%            2            153       Skewness      -7.544163
-99%           13            278       Kurtosis       379.3699
 
 
 
 * Browse data to export to Excel as CSV file
-browse maskid formdays seatsys new_first_sbp day_diff_pre consistent_med min_thiazide_daystart
+browse maskid formdays seatsys new_first_sbp day_diff_pre consistent_med min_mra_daystart
 
-export delimited maskid formdays seatsys new_first_sbp day_diff_pre consistent_med min_thiazide_daystart using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/export_preThiazide_bp_to_python_9.3", replace
+export delimited maskid formdays seatsys new_first_sbp day_diff_pre consistent_med min_mra_daystart using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/export_preMRA_bp_to_python_9.3", replace
 
 
-save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/subset_masterdata_thiazide_9.3_for_preThiazide_SBP_python.dta", replace
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/subset_masterdata_mra_9.3_for_preMRA_SBP_python.dta", replace
 
 
 * enter Python 
 import numpy as np
 import pandas as pd
 
-if 'maskid' in df.index.names:
-    df.reset_index(inplace=True)
-
-
-# Sort the dataframe by maskid and formdays
-df = df.sort_values(['maskid', 'formdays'])
-
-
-def calculate_bp_pre_thiazide(df):
+def calculate_bp_pre_mra(df):
     # Sort the dataframe by maskid and day_diff_pre in descending order
     df = df.sort_values(['maskid', 'day_diff_pre'], ascending=[True, False])
 
-    # Initialize columns for bp_pre_thiazide visits
+    # Initialize columns for bp_pre_MRA visits
     max_visits = 10  # Adjust this number based on your data
     for i in range(1, max_visits + 1):
-        df[f'bp_pre_thiazide_visit_{i}'] = np.nan
+        df[f'bp_pre_MRA_visit_{i}'] = np.nan
 
     # Function to process each patient
     def process_patient(group):
@@ -627,7 +563,7 @@ def calculate_bp_pre_thiazide(df):
                 if row['consistent_med'] == 1:
                     if not pd.isna(row['seatsys']):
                         visit_count += 1
-                        group.loc[idx, f'bp_pre_thiazide_visit_{visit_count}'] = row['seatsys']
+                        group.loc[idx, f'bp_pre_MRA_visit_{visit_count}'] = row['seatsys']
                         day_diff_pre_values.append(row['day_diff_pre'])
                         record_seatsys = True
                 elif row['consistent_med'] == 0:
@@ -636,7 +572,7 @@ def calculate_bp_pre_thiazide(df):
                     visit_count = 0
             if row['day_diff_pre'] == 0 and visit_count == 0 and not pd.isna(row['seatsys']):
                 visit_count += 1
-                group.loc[idx, f'bp_pre_thiazide_visit_{visit_count}'] = row['seatsys']
+                group.loc[idx, f'bp_pre_MRA_visit_{visit_count}'] = row['seatsys']
                 day_diff_pre_values.append(row['day_diff_pre'])
 
         # Calculate statistics for day_diff_pre
@@ -656,9 +592,9 @@ def calculate_bp_pre_thiazide(df):
     # Apply the function to each patient group
     df = df.groupby('maskid').apply(process_patient)
 
-    # Calculate the average of bp_pre_thiazide across visits
-    bp_pre_thiazide_columns = [f'bp_pre_thiazide_visit_{i}' for i in range(1, max_visits + 1)]
-    df['avg_bp_pre_thiazide'] = df[bp_pre_thiazide_columns].mean(axis=1)
+    # Calculate the average of bp_pre_MRA across visits
+    bp_pre_mra_columns = [f'bp_pre_MRA_visit_{i}' for i in range(1, max_visits + 1)]
+    df['avg_bp_pre_MRA'] = df[bp_pre_mra_columns].mean(axis=1)
 
     return df
 
@@ -666,66 +602,58 @@ def calculate_bp_pre_thiazide(df):
 # df = pd.read_csv('your_data.csv')
 
 # Apply the function to your dataframe
-df = calculate_bp_pre_thiazide(df)
+df = calculate_bp_pre_mra(df)
 
 # Display the results
 print(df[['maskid', 'day_diff_pre', 'consistent_med', 'seatsys'] + 
-        [f'bp_pre_thiazide_visit_{i}' for i in range(1, 11)] + 
-        ['avg_bp_pre_thiazide', 'mean_day_diff_pre', 'median_day_diff_pre', 'min_day_diff_pre', 'max_day_diff_pre']])
+        [f'bp_pre_MRA_visit_{i}' for i in range(1, 11)] + 
+        ['avg_bp_pre_MRA', 'mean_day_diff_pre', 'median_day_diff_pre', 'min_day_diff_pre', 'max_day_diff_pre']])
 
 # Save the results
-df.to_csv('bp_pre_thiazide_9.3.csv', index=False)
+df.to_csv('bp_pre_mra_results_test_9.1.csv', index=False)
+print("Results saved to 'bp_pre_mra_results_test.csv'")
+
+
+
 
 
 
 Footnote:
-Inside the process_patient function, the list day_diff_pre_values is used to store the day_diff_pre values for valid visits. When a valid visit is recorded (i.e., when we set a value for bp_pre_thiazide_visit_X), we also append the corresponding day_diff_pre value to our list. After processing all rows for a patient, statistics such as mean, median, min, and max of the day_diff_pre values are calculated.
+Inside the process_patient function, the list day_diff_pre_values is used to store the day_diff_pre values for valid visits. When a valid visit is recorded (i.e., when we set a value for bp_pre_mra_visit_X), we also append the corresponding day_diff_pre value to our list. After processing all rows for a patient, statistics such as mean, median, min, and max of the day_diff_pre values are calculated.
 
 
 * back to STATA 16
-import delimited "/Users/jiawei/Downloads/bp_pre_thiazide_9.3.csv", clear 
+import delimited "/Users/jiawei/Downloads/bp_pre_mra_9.3.csv", clear 
 
-save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/preThiazide_bpavg_frmpython9.3.dta"
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/preMRA_bpavg_frmpython9.3.dta"
 
 sort maskid formdays
-by maskid: egen previsit1BP = max(bp_pre_thiazide_visit_1)
-by maskid: egen previsit2BP = max(bp_pre_thiazide_visit_2)
-by maskid: egen previsit3BP = max(bp_pre_thiazide_visit_3)
-by maskid: egen previsit4BP = max(bp_pre_thiazide_visit_4)
+by maskid: egen previsit1BP = max(bp_pre_mra_visit_1)
+by maskid: egen previsit2BP = max(bp_pre_mra_visit_2)
+by maskid: egen previsit3BP = max(bp_pre_mra_visit_3)
+by maskid: egen previsit4BP = max(bp_pre_mra_visit_4)
 egen row_mean = rowmean(previsit1BP previsit2BP previsit3BP previsit4BP) 
-rename row_mean meanSBPpreThiazide
-rename meanSBPpreThiazide new_first_sbp_avg
+rename row_mean meanSBPpreMRA
+rename meanSBPpreMRA new_first_sbp_avg
 
-save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/preThiazide_bpavg_frmpython9.3.dta", replace
 
-* With the above I had transferred python pre-thiazide averaged SBP 
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/preMRA_bpavg_frmpython9.3.dta", replace
+
+* With the above I had transferred python pre-mra averaged SBP 
 * Combine this with the FULL cohort... 
 
-use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_thiazide_9.3 .dta"
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_mra_9.3 .dta"
 drop _merge
 
 * merge with formdays as part of the criteria as well because the maskid is not unique, but the maskid+formdays combo is unique 
-merge m:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/preThiazide_bpavg_frmpython9.3.dta"
+merge m:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/preMRA_bpavg_frmpython9.3.dta"
 sort maskid formdays
 
 Output: 
 
-    Result                           # of obs.
-    -----------------------------------------
-    not matched                        32,663
-        from master                    32,663  (_merge==1)
-        from using                          0  (_merge==2)
-
-    matched                            47,380  (_merge==3)
-    -----------------------------------------
 
 
 . distinct maskid if _merge ==3
-
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |      47380       4451
 
 
 (this 4451 number is different from prior, filter out anyone who is not on thiazide- I need that prior obs for baseline BP calculation before 
@@ -734,7 +662,7 @@ they change their status to thiazide-users, to get systolic BP baseline for ever
 * fill up the entire column with the new first SBP avg 
 egen new_first_sbp_avg_filled = min(new_first_sbp_avg) , by (maskid)
 
-. distinct maskid if thiazide ==1 
+. distinct maskid if MRA ==1 
 
         |        Observations
         |      total   distinct
@@ -742,7 +670,7 @@ egen new_first_sbp_avg_filled = min(new_first_sbp_avg) , by (maskid)
  maskid |      19989       2056
 
 . 
-. distinct maskid if thiazide ==1 & new_first_sbp_avg_filled !=.
+. distinct maskid if MRA ==1 & new_first_sbp_avg_filled !=.
 
         |        Observations
         |      total   distinct
@@ -751,95 +679,29 @@ egen new_first_sbp_avg_filled = min(new_first_sbp_avg) , by (maskid)
 
 
 
-*** who are the individuals with no baseline SBP and why 
-* Missing SBP at baseline occurs when first_thiazide_daysstart falls between two visits. In these cases, the prior visit either has a missing seatsys or occurs more than 60 days before thiazide initiation. Additionally, in the visit where thiazide is first started, formdays is greater than first_thiazide_daysstart, indicating that the SBP recorded belongs to a post-thiazide initiation visit. As this SBP does not reflect the baseline before thiazide initiation, it is excluded from the analysis. This sequence leads to gaps in baseline SBP data for certain patients.
+* Handling Missing Baseline SBP:
+
+* Missing SBP at baseline occurs when first_mra_daysstart falls between two visits. In such cases, the prior visit may have a missing seatsys or may have occurred more than 60 days before MRA initiation. Additionally, if in the visit where MRA is first started, formdays is greater than first_mra_daysstart, the SBP recorded reflects a post-MRA initiation visit. Since this SBP does not represent the baseline before MRA initiation, it is excluded from the analysis. This sequence can result in gaps in baseline SBP data for some patients.
+
+* Steps to Identify Missing SBP for MRA:
+* Identify maskid Where MRA == 1 and new_first_sbp_avg_filled went Missing
 
 
-* Identify maskid where thiazide == 1 and new_first_sbp_avg_filled is missing
 gen is_missing_sbp = missing(new_first_sbp_avg_filled)
-
-* List maskid with thiazide == 1 and missing new_first_sbp_avg_filled
-list maskid if first_thiazide_occurrence == 1 & is_missing_sbp == 1
-
-* exactly 27 of them here - add 27 to 2029 = 2056 
-		
-	
-       +--------+
-       | maskid |
-       |--------|
- 1665. | S01958 |
- 2095. | S02400 |
-10173. | S13017 |
-12496. | S16076 |
-13687. | S17282 |
-       |--------|
-16310. | S20682 |
-19292. | S24421 |
-19614. | S24785 |
-25188. | S32028 |
-27254. | S34382 |
-       |--------|
-30610. | S38430 |
-39286. | S48422 |
-44688. | S55156 |
-45115. | S55837 |
-47417. | S59100 |
-       |--------|
-50443. | S62954 |
-50582. | S63070 |
-54036. | S67108 |
-54857. | S67941 |
-61495. | S75581 |
-       |--------|
-62123. | S76420 |
-65272. | S80615 |
-68465. | S84401 |
-72166. | S89573 |
-76119. | S95131 |
-       |--------|
-77489. | S96932 |
-78824. | S98453 |
-       +--------+
-
-		
-
-. * Check if these individuals have seatsys not missing when thiazide_occurrence == 1
-
-. list maskid seatsys if first_thiazide_occurrence == 1 & is_missing_sbp == 1 & !missing(seatsys)
-
-       +------------------+
-       | maskid   seatsys |
-       |------------------|
- 1665. | S01958       122 |
- 2095. | S02400       123 |
-10173. | S13017       143 |
-13687. | S17282       129 |
-16310. | S20682       118 |
-       |------------------|
-19292. | S24421       147 |
-19614. | S24785       133 |
-25188. | S32028       124 |
-27254. | S34382       123 |
-30610. | S38430       134 |
-       |------------------|
-39286. | S48422       143 |
-44688. | S55156        90 |
-45115. | S55837       118 |
-47417. | S59100       135 |
-50443. | S62954       148 |
-       |------------------|
-50582. | S63070       152 |
-54036. | S67108       137 |
-54857. | S67941        95 |
-62123. | S76420       152 |
-65272. | S80615       107 |
-       |------------------|
-68465. | S84401       130 |
-78824. | S98453       127 |
-       +------------------+
+List maskid with MRA == 1 and Missing new_first_sbp_avg_filled:
 
 
-22 of these individuals have non-missing seatsys when they first started on thiazide. 
+list maskid if first_mra_occurrence == 1 & is_missing_sbp == 1
+
+
+
+* Check if these individuals have seatsys not missing when mra_occurrence == 1
+
+. list maskid seatsys if first_mra_occurrence == 1 & is_missing_sbp == 1 & !missing(seatsys)
+
+  
+
+
 
 
 * create a subset of data to store these maskid with missing baseline SBP 
@@ -848,7 +710,7 @@ list maskid if first_thiazide_occurrence == 1 & is_missing_sbp == 1
 gen is_missing_sbp = missing(new_first_sbp_avg_filled)
 
 * Identify the maskid that meet the condition
-gen condition_met = (first_thiazide_occurrence == 1 & is_missing_sbp == 1 )
+gen condition_met = (first_mra_occurrence == 1 & is_missing_sbp == 1 )
 
 * Create a flag for maskid that meet the condition
 bysort maskid: egen maskid_meets_condition = max(condition_met)
@@ -858,19 +720,19 @@ preserve
 keep if maskid_meets_condition == 1
 
 * Keep only the required variables
-keep maskid formdays first_thiazide_daysstart first_thiazide_formdays med_category seatsys
+keep maskid formdays first_mra_daysstart first_mra_formdays med_category seatsys
 
 * Save the subset to a new dataset
-save subset_maskid_data_all_obs.dta, replace
+save subset_MRA_ missing_baselineSBP_maskid.dta, replace
 
 * Restore the original dataset
 restore
 
-* I stored the data under "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/subset_maskid_data_all_obs.dta")"
+* I stored the data under "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/subset_MRA_ missing_baselineSBP_maskid.dta")"
 
 
 
-* The mean days SBP was obtained prior to thiazide initiation
+* The mean days SBP was obtained prior to mra initiation
 
 		
                       mean_day_diff_pre
@@ -889,46 +751,51 @@ restore
 99%           41             60       Kurtosis       2.993742
 
 
-* The "consistent_med" from the pre-thiazide initiation BP data; now we want to calculate the post-thiazide initiation BP
+* Post-MRA Initiation SBP Calculation:
+* Remove the Pre-MRA Consistent Medication Data:
+
 drop consistent_med
 
-* Now to get the SBP in 90 days post-thiazide
-* Keep only observations within 90 days of first thiazide start or where first_thiazide_occurrence is 1
-gen diff = formdays - min_thiazide_daystart if thiazide == 1
+
+
+
+* Identify SBP Within 90 Days Post-MRA Initiation:
+
+
+gen diff = formdays - min_mra_daystart if mra == 1
 keep if diff != . & diff < 91
-keep if diff >= 0 & diff !=. 
+keep if diff >= 0 & diff != .
 
-* Sort the data
-sort maskid formdays 
+sort maskid formdays
 
-* Check for consistent med_category again
+* Check for Consistent Medication Category:
+* Generate a variable consistent_med to check if the medication category remains unchanged.
+
 by maskid: gen consistent_med = (med_category == med_category[1])
 
 
-* The medication category at the time thiazide was first initiated is used as the reference for determining consistent_med.
+* The medication category at the time MRA was first initiated serves as the reference for determining consistent_med.
 * If consistent_med turns to zero, it indicates a change in the medication category from the prior visit.
-* In this case, the SBP value in the row where consistent_med turns zero will still be used because the effect of the medication change will be reflected in the subsequent SBP measurement, not the current one.
+* In such cases, the SBP value in the row where consistent_med becomes zero will still be used because the impact of the medication change will be reflected in the subsequent SBP measurement, not the current one.
 
-*** After the filters- to keep only maskid with visits within 90 days post thiazide initiation, 2056 --> 2007 
+* Filter Observations to Keep Only Those Within 90 Days Post-MRA Initiation:
 
-2007 individuals enter Python loop for delta SBP calculation 
+After applying the filters, the number of individuals reduces from 2056 to 2007.
+Python Loop for Delta SBP Calculation:
+
+2007 individuals are entered into the Python loop for delta SBP calculation.
 
 
-. distinct maskid 
 
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |       5052       2007
 
 
 * Save the dataset
-save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_w_prethiazideSBP_prepforpython9.3.dta"
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_w_preMRASBP_prepforpython9.3.dta"
 
 * Browse and export the data
-browse maskid formdays new_first_sbp_avg_filled min_thiazide_daystart diff seatsys med_category 
+browse maskid formdays new_first_sbp_avg_filled min_mra_daystart diff seatsys med_category 
 
-export delimited maskid formdays new_first_sbp_avg_filled min_thiazide_daystart diff seatsys med_category consistent_med using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/export_postthiazide_bp_to_python_9.3", replace
+export delimited maskid formdays new_first_sbp_avg_filled min_mra_daystart diff seatsys med_category consistent_med using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/export_postmra_bp_to_python_9.3", replace
 
 
 
@@ -943,7 +810,7 @@ df = df.sort_values(['maskid', 'formdays'])
 
 # Initialize new columns for results
 df['bp_diff'] = np.nan
-df['days_since_thiazide'] = np.nan
+df['days_since_MRA'] = np.nan
 
 # Initialize columns for visit-specific bp_diff
 for i in range(1, 6):
@@ -959,18 +826,18 @@ df['max_diff_duration'] = np.nan
 for maskid, group in df.groupby('maskid'):
     group = group.copy()  # Create a copy to avoid SettingWithCopyWarning
     
-    # Check if thiazide_daystart is NaN for all rows in this group
-    if group['min_thiazide_daystart'].isna().all():
+    # Check if MRA_daystart is NaN for all rows in this group
+    if group['min_MRA_daystart'].isna().all():
         continue
     
-    # Find the first non-NaN thiazide_daystart
-    min_thiazide_daystart = group['min_thiazide_daystart'].dropna().iloc[0]
+    # Find the first non-NaN MRA_daystart
+    min_MRA_daystart = group['min_MRA_daystart'].dropna().iloc[0]
     
-    # Calculate days since thiazide start
-    group['days_since_thiazide'] = group['formdays'] - min_thiazide_daystart
+    # Calculate days since MRA start
+    group['days_since_MRA'] = group['formdays'] - min_MRA_daystart
     
-    # Filter rows that are at least 30 days after thiazide start
-    eligible_rows = group[group['days_since_thiazide'] >= 30]
+    # Filter rows that are at least 30 days after MRA start
+    eligible_rows = group[group['days_since_MRA'] >= 30]
     
     if eligible_rows.empty:
         continue  # Skip if no eligible rows
@@ -992,10 +859,10 @@ for maskid, group in df.groupby('maskid'):
                 visit_count += 1
                 group.loc[idx, f'bp_diff_visit_{visit_count}'] = bp_diff
                 group.loc[idx, 'bp_diff'] = bp_diff
-                diff_durations.append(row['days_since_thiazide'])
+                diff_durations.append(row['days_since_MRA'])
             elif row['consistent_med'] == 0:
                 group.loc[idx, 'bp_diff'] = bp_diff
-                diff_durations.append(row['days_since_thiazide'])
+                diff_durations.append(row['days_since_MRA'])
                 break  # Stop calculating bp_diff after consistent_med becomes 0
     
     # Calculate average bp_diff across all visits
@@ -1021,39 +888,23 @@ for maskid, group in df.groupby('maskid'):
 # Export to STATA
 float_columns = df.select_dtypes(include=['float64']).columns
 df[float_columns] = df[float_columns].astype('float32')
-df.to_stata('post_thiazide_BP_avg_file_9.1.dta', version=117, write_index=True)
+df.to_stata('post_MRA_BP_avg_file_9.3.dta', version=117, write_index=True)
 print("Data exported successfully")
+ 
 
 
 # Import to STATA
-use "/Users/jiawei/Downloads/post_thiazide_BP_avg_file_9.3.dta"
-egen mean_bp_diff_thiazide = mean(bp_diff), by(maskid)
+use "/Users/jiawei/Downloads/post_MRA_BP_avg_file_9.3.dta"
+egen mean_bp_diff_mra = mean(bp_diff), by(maskid)
+
+* RENAME bp_diff, there is another bp_diff in the thiazide cohort
+rename bp_diff mra_bp_diff 
 
 
 * an excerpt of the dataset
 
 
-maskid	formdays	new_first_sbp_avg_filled	diff	seatsys	med_category	consistent_med	bp_diff	bp_diff_visit_1	bp_diff_visit_2	bp_diff_visit_3	bp_diff_visit_4	mean_diff_duration	mean_bp_diff_thiazide
-S00007	58	145	56	117	1002	1	-28	-28				56	-28
-S00010	205	147	21	118	2	1							
-S00109	59	129.5	23	103	1002	1						58	-43.5
-S00109	94	129.5	58	86	1002	1	-43.5	-43.5				58	-43.5
-S00122	0	137	0	137	1000	1						61	-1.666667
-S00122	34	137	34	133	1000	1	-4	-4				61	-1.666667
-S00122	62	137	62	137	1000	1	0		0			61	-1.666667
-S00122	87	137	87	136	1000	1	-1			-1		61	-1.666667
-S00128	0	125	0	125	0	1						62	-4
-S00128	28	125	28	140	0	1						62	-4
-S00128	62	125	62	121	2	0	-4					62	-4
-S00193	133	131	41	111	1014	1	-20	-20				64.5	-20
-S00193	180	131	88	111	1014	1	-20		-20			64.5	-20
-S00349	60	153.5	28	112	1002	1						56	-20.5
-S00349	88	153.5	56	133	1002	1	-20.5	-20.5				56	-20.5
-S00356	731	123	0	123	0	1							
-S00554	28	137	0	133	1007	1						72.5	-10
-S00554	53	137	25	118	1007	1						72.5	-10
-S00554	83	137	55	132	1007	1	-5	-5				72.5	-10
-S00554	118	137	90	122	1007	1	-15		-15			72.5	-10
+
 
 Footnote:
 
@@ -1068,31 +919,7 @@ by maskid: gen first_obs = (_n == 1)
 
 bysort first_ob: summarize mean_diff_duration, detail
 
-			-> first_obs = 1
-			
-			                     mean_diff_duration
-			-------------------------------------------------------------
-			      Percentiles      Smallest
-			 1%           30             30
-			 5%           33             30
-			10%           35             30       Obs               1,600
-			25%           47             30       Sum of Wgt.       1,600
-			
-			50%           55                      Mean            55.3575
-			                        Largest       Std. Dev.      14.01821
-			75%           63             90
-			90%         74.5             90       Variance       196.5103
-			95%           83             90       Skewness       .2738789
-			99%           90             90       Kurtosis       2.705279
-			
-			
-			
-			. distinct maskid 
-			
-			        |        Observations
-			        |      total   distinct
-			--------+----------------------
-			 maskid |       5052       2007
+
 			
 			. distinct maskid if bp_diff !=.
 			
@@ -1110,14 +937,14 @@ The range of formdays spans from 30 to 90, in line with our criteria.
 2) the medication list is constant across the visits 
 
 
-save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/from python delta BP thiazide 9.3.dta"
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/from python delta BP MRA 9.3.dta"
 
 
 * now merge the dataset with masterdata
 
-use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_thiazide_9.3.dta"
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_mra_9.3.dta"
 drop _merge
-merge m:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/from python delta BP thiazide 9.3.dta"
+merge m:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/from python delta BP MRA 9.3.dta"
 drop _merge 
 
 			
@@ -1192,42 +1019,28 @@ Output:
 
 * ? The mean SBP is averaged across observations or individuals?
 * to solve this assign 1 number to each maskid and they all have only 1 observation with 1 delta BSP 
-* carry forward the mean_bp_diff_thiazide for each maskid 
+* carry forward the mean_bp_diff_mra for each maskid 
 
 sort maskid formdays 
-egen mean_bp_diff_thiazide_filled = min(mean_bp_diff_thiazide) , by (maskid)
+egen mean_bp_diff_mra_filled = min(mean_bp_diff_mra) , by (maskid)
 
 
 sort maskid formdays
 by maskid: gen first_obs_fordeltaBP = (_n == 1)
 
-. summarize mean_bp_diff_thiazide_filled, detail, if first_obs_fordeltaBP ==1
+. summarize mean_bp_diff_mra_filled, detail, if first_obs_fordeltaBP ==1
 
-			                mean_bp_diff_thiazide_filled
-			-------------------------------------------------------------
-			      Percentiles      Smallest
-			 1%          -54            -95
-			 5%          -41          -74.5
-			10%          -35          -72.5       Obs               1,593
-			25%        -23.5            -67       Sum of Wgt.       1,593
-			
-			50%    -13.66667                      Mean          -14.33998
-			                        Largest       Std. Dev.      15.54032
-			75%         -4.5             33
-			90%            4             34       Variance       241.5016
-			95%            9             35       Skewness      -.2018821
-			99%           24             70       Kurtosis       4.236693
-
+		
 * okay they are essentially the same
-* note that the duration of days post thiazide is 55.6 day - which is pretty good
+* note that the duration of days post mra is 55.6 day - which is pretty good
 
 
 
-* create the FINAL thiazide cohort
-gen thiazide_cohort = .
-replace thiazide_cohort = 1 if mean_bp_diff_thiazide_filled !=. 
+* create the FINAL mra cohort
+gen mra_cohort = .
+replace mra_cohort = 1 if mean_bp_diff_mra_filled !=. 
 
-. distinct maskid if thiazide_cohort ==1 
+. distinct maskid if mra_cohort ==1 
 
         |        Observations
         |      total   distinct
