@@ -566,7 +566,6 @@ by maskid: egen fourth_SBP_filled = max(fourth_SBP)
 * Find out who has missing SBP at baseline
 
 gen have_SBP_baseline = .
-replace have_SBP_baseline = 1 if cohort2 ==1 & cohort2 !=. & first_SBP_filled !=.
 
 Output: 
 
@@ -585,15 +584,16 @@ Output:
 
 
 * try this: 
-* This is my crude way of getting baseline SBP - by incorporating prior visit within 60 days provided that no medications 
-were changed across the 2 visits. 
-* Calculate the difference between the visit when thiazide is started and the prior thiazide visit
+* This is my crude way of getting baseline SBP - by incorporating prior visit within 60 days provided that no medications were changed across the 2 visits. 
 
-	* Find prior SBP
+* Calculate the Difference Between the Visit When MRA is Started and the Prior MRA Visit:
+
+* Find prior SBP
+
 sort maskid formdays 
 by maskid: gen prior_SBP = seatsys[_n-1] if missing(seatsys) & !missing(seatsys[_n-1])
 
-	* Carry forward prior SBP
+* Carry forward prior SBP
 by maskid: replace prior_SBP = prior_SBP[_n-1] if missing(prior_SBP) & !missing(prior_SBP[_n-1])
 
 by maskid: egen thiazide_daystart_first = min(thiazide_daystart)
@@ -603,11 +603,8 @@ gen eligible_missing_first_SBP = (visit_diff_prior_and1_eligible == 1 & med_cate
 gen new_first_sbp = first_SBP_filled  
 replace new_first_sbp = prior_SBP if first_SBP_filled == . & eligible_missing_first_SBP == 1
 
-* However, there could be multiple visits in that 60 days prior to thiazide start day, the above codes only take
-the most proximal visit into consideration. 
-* Hence, uses python to loop through prior visits as long as 
-1) within 60 days from thiazide initiation
-2) the medication list stays the same except for the addition of thiazide during thiazide start day
+* Multiple visits may occur within 60 days before thiazide initiation. The above code only considers the most recent visit.
+* To account for all prior visits within 60 days and with unchanged medication lists (except for the addition of thiazide), use Python to loop through these visits.
 
 
 
