@@ -84,7 +84,8 @@ BP data without meds data presumably the maskid had the observations removed fro
  maskid |     196217       9347
 
 
-* Drop the CLOSEOUT visit, this simple code will still keep the rest of the observation for that maskid as it is
+* Drop the CLOSEOUT visit while retaining all other observations for that maskid
+
 . drop if visitcode == "CLO"
 (7,980 observations deleted)
 
@@ -110,148 +111,96 @@ BP data without meds data presumably the maskid had the observations removed fro
 sort maskid formdays
 
 * Generate the thiazide column, thiazide use ==1 
-gen thiazide = 0
+
+gen MRA = 0
 forvalues i = 1/10 {
-    replace thiazide = 1 if (strpos(lower(medname`i'), "hctz") > 0 | strpos(lower(medname`i'), "hct") > 0 | strpos(lower(medname`i'), "hydro") > 0 | strpos(lower(medname`i'), "chlorth") > 0 | strpos(lower(medname`i'), "chloro") > 0 | strpos(lower(medname`i'), "indapa") > 0 |strpos(lower(medname`i'), "metolaz") > 0 |strpos(lower(medname`i'), "diurel") > 0 | strpos(lower(medname`i'), "azide") > 0 | strpos(lower(medname`i'), "lidone") > 0)
+    replace MRA = 1 if (strpos(lower(medname`i'), "spir") > 0 |(strpos(lower(medname`i'), "actone") > 0 | strpos(lower(medname`i'), "inspra") > 0 | strpos(lower(medname`i'), "eple") > 0 | strpos(lower(medname`i'), "aldac") > 0)
 }
 
-Output: 
-. distinct maskid if thiazide ==1 
 
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |      95537       6925
+
+
+
+Output: 
+. distinct maskid if MRA ==1 
+
 
 		
 
-* Now remove on thiazide at baseline
+* Now remove on MRA at baseline
 
-* Generate a flag for each medname column for thiazide 
+* Generate a flag for each medname column for MRA 
 forvalues i = 1/10 {
-    gen flag_thiazide`i' = strpos(lower(medname`i'), "hctz") > 0 | strpos(lower(medname`i'), "hct") > 0 | strpos(lower(medname`i'), "hydro") > 0 | strpos(lower(medname`i'), "chlorth") > 0 | strpos(lower(medname`i'), "chloro") > 0 | strpos(lower(medname`i'), "indapa") > 0 |strpos(lower(medname`i'), "metolaz") > 0 |strpos(lower(medname`i'), "diurel") > 0 | strpos(lower(medname`i'), "azide") > 0 | strpos(lower(medname`i'), "lidone") > 0
+    gen flag_mra`i' = strpos(lower(medname`i'), "spir") > 0 |(strpos(lower(medname`i'), "actone") > 0 | strpos(lower(medname`i'), "eple") > 0 | strpos(lower(medname`i'), "aldac") > 0 | strpos(lower(medname`i'), "inspra") > 0
 }
 
-* Create an indicator for any thiazide use
-gen any_thiazide = (flag_thiazide1 + flag_thiazide2 + flag_thiazide3 + flag_thiazide4 + flag_thiazide5 + flag_thiazide6 + flag_thiazide7 + flag_thiazide8 + flag_thiazide9 + flag_thiazide10) > 0
+* Create an indicator for any MRA use
+gen any_mra = (flag_mra1 + flag_mra2 + flag_mra3 + flag_mra4 + flag_mra5 + flag_mra6 + flag_mra7 + flag_mra8 + flag_mra9 + flag_mra10) > 0
 
-* Identify the first occurrence of thiazide for each maskid
-by maskid (formdays): gen first_thiazide_occurrence = any_thiazide == 1 & sum(any_thiazide) == 1
+* Identify the first occurrence of MRA for each maskid
+by maskid (formdays): gen first_mra_occurrence = any_mra == 1 & sum(any_mra) == 1
 
-
-* explanation: sum(any_thiazide) is a running sum of the any_thiazide variable within each maskid group.
-It equals 1 only for the first occurrence of a thiazide within each group. 
+* explanation: sum(any_mra) is a running sum of the any_mra variable within each maskid group.
+It equals 1 only for the first occurrence of a mra within each group. 
 For each maskid, the function goes through the rows in order of formdays.
-The first time it encounters a row where any_thiazide is 1, both conditions are true, so first_thiazide_occurrence is set to 1 for that row.
-For any subsequent rows where any_thiazide is 1, the second condition (sum(any_thiazide) == 1) will be false, so first_thiazide_occurrence will be 0. This ensures that first_thiazide_occurrence is 1 only for the first occurrence of a thiazide medication for each patient, regardless of which row it appears in.
+The first time it encounters a row where any_mra is 1, both conditions are true, so first_mra_occurrence is set to 1 for that row.
+For any subsequent rows where any_mra is 1, the second condition (sum(any_mra) == 1) will be false, so first_mra_occurrence will be 0. This ensures that first_mra_occurrence is 1 only for the first occurrence of a mra medication for each patient, regardless of which row it appears in.
 
-* Record the formdays and daysstart of the first thiazide occurrence
 
-gen first_thiazide_formdays = formdays if first_thiazide_occurrence == 1
-by maskid: egen first_thiazide_formdays_filled = min(first_thiazide_formdays)
+* Record the formdays and daysstart of the first MRA occurrence
+gen first_mra_formdays = formdays if first_mra_occurrence == 1
+by maskid: egen first_mra_formdays_filled = min(first_mra_formdays)
 
-* explanation: Since we only filled in first_thiazide_formdays for the first occurrence, 
-this minimum will be the formdays of the first thiazide occurrence. This function allows us to know when thiazide (in regards of formdays) was first started for a patient, regardless of which row we're looking at for that patient.
 
- * Generate a column to store the daystart for thiazide medications
+* explanation: Since we only filled in first_mra_formdays for the first occurrence, 
+this minimum will be the formdays of the first mra occurrence. This function allows us to know when mra (in regards of formdays) was first started for a patient, regardless of which row we're looking at for that patient.
+
+* Generate a column to store the daystart for MRA medications
 sort maskid formdays
-gen thiazide_daystart = .
+gen mra_daystart = .
 forvalues i = 1/10 {
-    replace thiazide_daystart = daysstart`i' if (strpos(lower(medname`i'), "hctz") > 0 | strpos(lower(medname`i'), "hct") > 0 | strpos(lower(medname`i'), "hydro") > 0 | strpos(lower(medname`i'), "chlorth") > 0 | strpos(lower(medname`i'), "chloro") > 0 | strpos(lower(medname`i'), "azide") > 0 | strpos(lower(medname`i'), "lidone") > 0)| strpos(lower(medname`i'), "indapa") > 0 |strpos(lower(medname`i'), "metolaz") > 0 |strpos(lower(medname`i'), "diurel") > 0
+    replace mra_daystart = daysstart`i' if (strpos(lower(medname`i'), "spir") > 0 | strpos(lower(medname`i'), "eple") > 0 | strpos(lower(medname`i'), "aldac") > 0 | (strpos(lower(medname`i'), "actone") > 0 |(lower(medname`i'), "inspra") > 0)
 }
 
-
-gen first_thiazide_daysstart =.
-
+gen first_mra_daysstart = .
 forvalues j = 1/10 {
-    replace first_thiazide_daysstart = daysstart`j' if first_thiazide_occurrence == 1 & flag_thiazide`j' == 1
+    replace first_mra_daysstart = daysstart`j' if first_mra_occurrence == 1 & flag_mra`j' == 1
 }
-by maskid: egen first_thiazide_daysstart_filled = min(first_thiazide_daysstart)
+by maskid: egen first_mra_daysstart_filled = min(first_mra_daysstart)
 
-* explanation: this is to capture the correct daysstart for the first thiazide occurrence, which could be in any of the 10 medication columns. Repeat this value for every row of each patient, which is useful for subsequent analyses or when checking for changes in medication timing.
-
-
-
-* Keep the 1st observation of thiazide being started 
+* Keep the 1st observation of MRA being started 
 sort maskid formdays
-bys maskid: egen min_thiazide_daystart = min(first_thiazide_daysstart)
-
-* Remove patients who are on thiazide at baseline
-distinct maskid if thiazide == 1 & min_thiazide_daystart < 0
-distinct maskid if thiazide == 1 & min_thiazide_daystart >= 0
-
-Output: 
-
-. distinct maskid if thiazide == 1 & min_thiazide_daystart < 0
-
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |      14618       1136
-
-. distinct maskid if thiazide == 1 & min_thiazide_daystart >= 0
-
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |      80919       5789
+bys maskid: egen min_mra_daystart = min(first_mra_daysstart)
 
 
+* explanation: this is to capture the correct daysstart for the first mra occurrence, which could be in any of the 10 medication columns. Repeat this value for every row of each patient, which is useful for subsequent analyses or when checking for changes in medication timing.
 
-* Generate a flag variable to identify observations with min_thiazide_daystart < 0
-gen flag = (min_thiazide_daystart < 0)
+
+* Remove patients who are on MRA at baseline
+distinct maskid if mra == 1 & min_mra_daystart < 0
+distinct maskid if mra == 1 & min_mra_daystart >= 0
+
+* Generate a flag variable to identify observations with min_mra_daystart < 0
+gen flag = (min_mra_daystart < 0)
 
 * Create a variable that is 1 if any observation for a maskid has flag = 1
 bysort maskid: egen maskid_flag = max(flag)
 
-* Keep only observations where maskid_flag is 0 (i.e., remove all observations for maskids with min_thiazide_daystart < 0)
+* Keep only observations where maskid_flag is 0 (i.e., remove all observations for maskids with min_mra_daystart < 0)
 keep if maskid_flag == 0
 
 * Clean up
 drop flag maskid_flag
 
-* Optional: Display the number of observations removed
-count
-display "Remaining observations: " r(N)
 
 
-Output: 
+* Now after removing those on MRA at baseline, work on removing those on MRA combo meds
 
-. distinct maskid 
-
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |     165419       8211
-
-. distinct maskid if thiazide ==1
-
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |      80919       5789
-
-
-
-
-
-* Now after removing those on thiazide at baseline, work on removing those on thiazide combo meds
 
 // Define the list of medication names to search for
 // Create a local macro with the list of medications
-local medlist `""amiloride HCTZ" "amiloride/PHCTZ" "amiloride/HCTZ" "AMLORIDE/HCTZ" "atenolol chlorthalidone" "atenolol / chlorthalidone" "Atenolol /Chlorthalidone" "atenolol-chlorthalidone" "atenolol/chlorthalidone" "Atenolol/Chlorthalidone" "Atenolol/Chlorthalize" "atenolol/HCTZ" "azilsartan / chlorthalidone" "azilsartan/chlorthalidone" "azilsartan/chlothalidone" "benazepril/hctz" "benicar hct" "benicar/hctz" "diovan hct" "diovan hctz" "diovan/hct" "Diovan/HCTZ" "Diovan/Hct" "diovan/hctz" "Hydrochlorothiazide / Triamterene" "hydrochlorothiazide triamte" "hydrochlorothiazide triamterene" "hydrochlorothiazide/lisinopril" "hydrochlorothiazide/triamterene" "Hydrochlorothiazide/lisinopril" "Hydrochlorothiazide/lisinoprol" "hct triamterene" "hct z/triamterene" "HCTZ 25/TRIAMTERENE 37.5MG TAB" "hctz / lisinopril" "HCTZ /Triamterene" "hctz / lisonopril" "hctz 12.5/ lisonopril" "hctz 50/triam 75" "HCTZ-Aldactone" "hctz/chlorthalidine" "HCTZ/Lisinopril" "hctz/lisinopril" "hctz/olemesarten" "hctz/quinapril" "hctz/ triamterene" "HCTZ/ LISINOPRIL" "hctz/triamterene" "HCTZ/TRIAMTERENE" "HCTZ/Triamterene" "hyzaar" "hyzaar/Hctz" "lisinopril hct" "Lisinopril / HCTZ" "Lisinopril /HCTZ" "lisinopril-hctz" "lisinopril/ hydrochlorothiaz" "Lisinopril-HCT" "lisinopril/HCTZ" "Lisinopril-HCTZ" "lisinopril hydrochlorothiaz" "Lisinopril-Hydrochlorothiazide" "lisinopril hydrochlorothiazide" "lisinopril/hctz" "Lisinopril/HCTZ" "lisinoprilHCTZ" "losartan / hctz" "losartan/HCTZ" "losartan/hctz" "monopril hct" "moexipril / hctz" "spironolactone hct2" "spironolactone hctz" "spironolactone hydrochlorot" "spironolactone hydrochlorothiazide" "spironolactone-hctz" "spironolactone/HCTZ" "Triamterene HCTZ" "Triamterene Hydrochlorothiazide" "Triamterene hydrochlorothiaze" "Triamterene/ HCTZ" "Triamterene/HCTZ" "Triamterene/Hctz" "TRIAMETERENE/HCTZ" "TRIAMTERENE HCTZ" "TRIAMTERENE/HCTZ" "triam hctz" "triam/hctz" "triameterene" "triameterene/hydrochlorothiazide" "triamterene hctz" "triamterene / hctz" "triamterene hctz" "triamterene hydrochlorothia" "triamterene hydrochlorothiazide" "triamterene-hctz" "triamterene/ hctz" "triamterene/HCTZ" "triamterene/hctz" "triamterene/hydrochlorothia" "valsartan hctz" "valsartan/hctz" "ATENOLOL/CHLORTHALIDONE" "AZISARTAN/HCT" "Amiloride HCTZ" "Atenolol/HCTZ" "Azilsartan/chlothalidone" "Benazapril/HCTZ (PCP-prescribed)" "Benecor/HCTZ" "Benzapril/HCTZ" "Bisoprolol w/hctz (per her PCP)" "DIOVAN/ HCTZ" "DIOVAN HTC" "DIOVAN HCT" "Diovan HCT" "Diovan HCT (PCP prescribed)" "Diovan hct" "Diovan/hctz" "EDARBYCLOR/Chlorthalidone" "EDARBYCLOR" "Edarbyclor" "Enalapril/HCTZ" "Hydroclorothiazide/lisinopril" "Lisinopril HCTZ" "Losartan / HCTZ (PCP-prescribed, 1/2 )" "Losartan HCTZ" "Losartan potassium HCTZ" "Losartan/HCTZ" "Losartan/hctz" "McCardis HCTZ" "Micardis/HCTZ" "Spironolactone-HCTZ" "Triamterine/HCTZ" "Valsartan/HCTZ" "aldactazide" "amiloride & hctz" "amiloride / hctz" "amiloride /hctz" "amiloride hctz (5/50 mg tab (take 1)" "amiloride/hctz" "amoxipril/ HCTZ" "benazapril/hctz" "bisoprolol hctz" "enalapril hydrochlorothiazi" "hydrochlorothiazide / lisinopril" "isinopril hydrochlorothiaz" "lisinipril hctz" "lisinopril hctz" "lisinopril/hydrochlorothiazide" "maxzide" "maxide" "microzide (Hctz)" "olmesartan/hctz" "spironactone-hctz" "spironalactone/htct" "triamterene  hctz" "amiloride hctz" "HCTZ/triamterene" "HCTZ/lisinopril" "amiloride &" "amiloride & (5/50 mg.)   (take 1/2 tab)" "amiloride w/" "amiloride with" "amlodipine/hctz" "Amiloride w/" "lisinopril HCTZ" "amloride/hydrochloride and hydrochlorothiazide""'
+local medlist `""spironolactone hct2" "spironolactone hctz" "spironolactone hydrochlorot" "spironolactone hydrochlorothiazide" "spironolactone-hctz" "spironolactone/HCTZ" "spironalactone/htctz" "spironactone-hctz" "Spironolactone-HCTZ" "HCTZ-Aldactone""'
 
-****** this function only drops the observation- it still keeps the maskid and the rest of the observations that do not have combo meds
-the problem is the patient might start a thiazide again later and got into the analysis this way ******
-
-					forvalues i = 1/10 { 
-					    foreach med of local medlist {
-					        drop if medname`i' == "`med'"
-					    }
-					} 
-
-
-**** try this - it works!
 * Generate a flag variable to identify observations with specified medications
 gen flag = 0
 forvalues i = 1/10 {
@@ -271,42 +220,28 @@ drop flag maskid_flag
 
 
 
+
 Output: 
-			. distinct maskid 
-			
-			        |        Observations
-			        |      total   distinct
-			--------+----------------------
-			 maskid |     143986       7212
-			
-			. distinct maskid if thiazide ==1
-			
-			        |        Observations
-			        |      total   distinct
-			--------+----------------------
-			 maskid |      65399       4797
 
 
 
 
 
 * Generate a variable to count occurrences
-gen thiazide_daystart_same_count = 0
+gen mra_daystart_same_count = 0
 
 * Loop through daysstart1 to daysstart10
 forvalues i = 1/10 {
-    replace thiazide_daystart_same_count = thiazide_daystart_same_count + 1 if daysstart`i' == thiazide_daystart & thiazide_daystart != .
+    replace mra_daystart_same_count = mra_daystart_same_count + 1 if daysstart`i' == mra_daystart & mra_daystart != .
 }
 
 * Generate indicator for multiple occurrences
-gen multiple_same_daystart = (thiazide_daystart_same_count > 1) if thiazide_daystart != .
+gen multiple_same_daystart = (mra_daystart_same_count > 1) if mra_daystart != .
 
 * Optional: Label the new variable
-label variable multiple_same_daystart "More than one occurrence of daystart thats identical to thiazide_daystart in daysstart1-10"
+label variable multiple_same_daystart "More than one occurrence of daystart thats identical to mra_daystart in daysstart1-10"
 
-
-*** Now remove anyone who started thiazide the same day with other meds
-
+* Now remove anyone who started MRA the same day with other meds
 * Generate a flag variable to identify observations with multiple_same_daystart == 1
 gen flag = (multiple_same_daystart == 1)
 
@@ -319,120 +254,64 @@ keep if maskid_flag == 0
 * Clean up
 drop flag maskid_flag
 
-* Optional: Display the number of observations removed
-count
-display "Remaining observations: " r(N)
 
 
 
 Output: 
 
-			. distinct maskid 
 			
-			        |        Observations
-			        |      total   distinct
-			--------+----------------------
-			 maskid |      88120       4571
-			
-			. distinct maskid if thiazide ==1
-			
-			        |        Observations
-			        |      total   distinct
-			--------+----------------------
-			 maskid |      25044       2156
 
 
 
-
-* generate a cumulative count of how many times thiazide treatment starts for each patient
-* counts the number of times thiazide switches from 0 to 1 within each maskid group
-* thiazide_occurrence will be a cumulative count of the occurrences where:
-    thiazide  changes from 0 to 1, or
-    thiazide  is 1 at the start for the maskid, or formdays is 0 and thiazide is 1. (because there is no prior to compare if started on formdays 0)
-    Because thiazide use at baseline is already removed, if thiazide  use daystart = formdays 0 
+* generate a cumulative count of how many times mra treatment starts for each patient
+* counts the number of times mra switches from 0 to 1 within each maskid group
+* mra_occurrence will be a cumulative count of the occurrences where:
+    mra  changes from 0 to 1, or
+    mra  is 1 at the start for the maskid, or formdays is 0 and mra is 1. (because there is no prior to compare if started on formdays 0)
+    Because mra use at baseline is already removed, if mra use daystart = formdays 0 
 
 sort maskid formdays
-by maskid: gen thiazide_occurrence = sum(thiazide == 1 & (thiazide[_n-1] == 0 | _n == 1 | formdays == 0))
-
-* if thiazide turns from 1 to 0 and then 1 again, it will be marked as occurrence == 2
-
-
-Output: 
-
-			. distinct maskid if thiazide ==1 & thiazide_occurrence == 1
-			
-			        |        Observations
-			        |      total   distinct
-			--------+----------------------
-			 maskid |      20695       2156
-			
-			. distinct maskid if thiazide ==1 & thiazide_occurrence == 2
-			
-			        |        Observations
-			        |      total   distinct
-			--------+----------------------
-			 maskid |       3578        567
-
-
+by maskid: gen mra_occurrence = sum(mra == 1 & (mra[_n-1] == 0 | _n == 1 | formdays == 0))
 
 * keep only the first occurrence
-			. drop if thiazide_occurrence > 1 & thiazide_occurrence !=.
-			(6,244 observations deleted)
+drop if mra_occurrence > 1 & mra_occurrence !=.
 			
-			. distinct maskid if thiazide ==1 & thiazide_occurrence == 1
 			
-			        |        Observations
-			        |      total   distinct
-			--------+----------------------
-			 maskid |      20695       2156
-			
-			. distinct maskid if thiazide ==1 & thiazide_occurrence == 2
-			
-			        |        Observations
-			        |      total   distinct
-			--------+----------------------
-			 maskid |          0          0
-
-
-
-							
-
-* To know the previous visit before thiazide turns 1
-gen prior_onThiazide = .
-by maskid: replace prior_onThiazide = formdays[_n-1] if thiazide == 1 & (thiazide[_n-1] == 0 | _n == 1) & thiazide_occurrence == 1
+* To know the previous visit before MRA turns 1
+gen prior_onMRA = .
+by maskid: replace prior_onMRA = formdays[_n-1] if mra == 1 & (mra[_n-1] == 0 | _n == 1) & mra_occurrence == 1
 
 * This subsequent code ensures that only the 1st occurrence is used
-replace prior_onThiazide = . if thiazide_occurrence >= 2 & prior_onThiazide != .
+replace prior_onMRA = . if mra_occurrence >= 2 & prior_onMRA != .
 
 * Sort data by maskid and formdays
 sort maskid formdays  
 
-* Generate and fill up the entire column for each thiazide occurrence
-* Generate variables for the first and second occurrences of thiazide
-* The thiazide order has the num of occurrence as well but it does not carry forward
+* Generate and fill up the entire column for each MRA occurrence
+* Generate variables for the first and second occurrences of MRA
+by maskid: gen first_onMRA = formdays if mra == 1 & sum(mra) == 1
+by maskid: gen second_onMRA = formdays if mra == 1 & sum(mra) == 2
 
-by maskid: gen first_onThiazide = formdays if thiazide == 1 & sum(thiazide) == 1
-by maskid: gen second_onThiazide = formdays if thiazide == 1 & sum(thiazide) == 2
-
-* Carry forward non-missing values in the column 'prior_onThiazide'
-bysort maskid (formdays): gen prior_onThiazide_filled = prior_onThiazide if prior_onThiazide != .
-bysort maskid (formdays): replace prior_onThiazide_filled = prior_onThiazide_filled[_n-1] if missing(prior_onThiazide_filled)
+* Carry forward non-missing values in the column 'prior_onMRA'
+bysort maskid (formdays): gen prior_onMRA_filled = prior_onMRA if prior_onMRA != .
+bysort maskid (formdays): replace prior_onMRA_filled = prior_onMRA_filled[_n-1] if missing(prior_onMRA_filled)
 
 * Include the first row as well
-by maskid: replace prior_onThiazide = prior_onThiazide[_n+1] if missing(prior_onThiazide) & !missing(prior_onThiazide[_n+1])
+by maskid: replace prior_onMRA = prior_onMRA[_n+1] if missing(prior_onMRA) & !missing(prior_onMRA[_n+1])
 
 * Sort data again by maskid and formdays
 sort maskid formdays
 
-* Fill in the first and second occurrences of thiazide
-by maskid: egen first_onThiazide_filled = max(first_onThiazide)
-by maskid: egen second_onThiazide_filled = max(second_onThiazide)
+* Fill in the first and second occurrences of MRA
+by maskid: egen first_onMRA_filled = max(first_onMRA)
+by maskid: egen second_onMRA_filled = max(second_onMRA)
 
-* Generate and fill in the third and fourth occurrences of thiazide
-by maskid: gen third_onThiazide = formdays if thiazide == 1 & sum(thiazide) == 3
-by maskid: egen third_onThiazide_filled = max(third_onThiazide)
-by maskid: gen fourth_onThiazide = formdays if thiazide == 1 & sum(thiazide) == 4
-by maskid: egen fourth_onThiazide_filled = max(fourth_onThiazide)
+* Generate and fill in the third and fourth occurrences of MRA
+by maskid: gen third_onMRA = formdays if mra == 1 & sum(mra) == 3
+by maskid: egen third_onMRA_filled = max(third_onMRA)
+by maskid: gen fourth_onMRA = formdays if mra == 1 & sum(mra) == 4
+by maskid: egen fourth_onMRA_filled = max(fourth_onMRA)
+
 
 
 * medication list
@@ -441,7 +320,7 @@ gen med_oxin = 0
 gen med_triam = 0
 gen med_olol = 0
 gen med_ipine_azem = 0
-gen med_mra = 0
+gen med_thia_chlo_hct = 0
 gen med_fur_bum_tors = 0
 gen med_hydral_azine = 0
 gen med_pril_artan = 0
@@ -457,14 +336,18 @@ forvalues i = 1/10 {
     replace med_ipine_azem = 5 if regexm(lower(medname`i'), "(ipine|azem|norv|vera|nife|proca|nicar|nefe|caduet)")
 	replace med_minoxi = 10000 if regexm(lower(medname`i'), "(mino|xidil)")
 	replace med_guanfacine = 0.01 if regexm(lower(medname`i'), "(guan)")
-    replace med_mra = 9 if regexm(lower(medname`i'), "(spir|eple|aldac|inspra)")
-    replace med_fur_bum_tors = 13 if regexm(lower(medname`i'), "(fur|bum|tors|inda|etha|demadex)")
+    replace med_thia_chlo_hct = 9 if regexm(lower(medname`i'), "(thia|chlo|chlorth|hyrdo|thiaz|azide|hyzaar|indap|metola|diurel|hctz|hygro|edarbyclor)")
+    replace med_fur_bum_tors = 13 if regexm(lower(medname`i'), "(fur|bum|tors|inda|etha|demadex|lasix)")
     replace med_hydral_azine = 0.5 if regexm(lower(medname`i'), "(hydral|azine)")
     replace med_pril_artan = 1000 if regexm(lower(medname`i'), "(pril|artan|benic|vals|olme|edarbi|diovan|azil|trando|micardis|atacand)")
     replace med_idine_clon = 100 if regexm(lower(medname`i'), "(idine|clon|cata)")
 }
 * Sum all medication categories into a single variable
-gen med_category = med_oxin + med_olol + med_ipine_azem + med_mra + med_fur_bum_tors + med_hydral_azine + med_pril_artan + med_idine_clon + med_minoxi + med_triam + med_guanfacine 
+gen med_category = med_oxin + med_olol + med_ipine_azem + med_thia_chlo_hct + med_fur_bum_tors + med_hydral_azine + med_pril_artan + med_idine_clon + med_minoxi + med_triam + med_guanfacine 
+
+
+* Label the new variable
+label variable med_category "Sum of medication categories"
 
 *this works for combination meds as well- for example, atenolol, amlodipine/benazapril, will sum up to 1007 ( 1000 + 5 + 2)
 
@@ -477,17 +360,17 @@ drop med_oxin med_olol med_ipine_azem med_mra med_fur_bum_tors med_hydral_azine 
 
 sort maskid formdays 
  
-* Get med_category for first and second thiazide visits
-by maskid: gen prior_med_category = med_category if formdays == prior_onThiazide
+* Get med_category for first and second MRA visits
+by maskid: gen prior_med_category = med_category if formdays == prior_onMRA
 
-* Because prior_onThiazide is one row below
-by maskid: replace prior_med_category = med_category if formdays == prior_onThiazide_filled
+* Because prior_onMRA is one row below
+by maskid: replace prior_med_category = med_category if formdays == prior_onMRA_filled
 
 * Generate column to store "med_category" according to visits
-by maskid: gen first_med_category = med_category if formdays == first_onThiazide
-by maskid: gen second_med_category = med_category if formdays == second_onThiazide
-by maskid: gen third_med_category = med_category if formdays == third_onThiazide
-by maskid: gen fourth_med_category = med_category if formdays == fourth_onThiazide
+by maskid: gen first_med_category = med_category if formdays == first_onMRA
+by maskid: gen second_med_category = med_category if formdays == second_onMRA
+by maskid: gen third_med_category = med_category if formdays == third_onMRA
+by maskid: gen fourth_med_category = med_category if formdays == fourth_onMRA
 
 * Fill these values for all rows within each maskid
 by maskid: egen prior_med_category_filled = max(prior_med_category)
@@ -508,11 +391,12 @@ gen med_category_2_1_unequal = (med_category_diff_2_1 != 0 & med_category_diff_2
 gen med_category_3_1_unequal = (med_category_diff_3_1 != 0 & med_category_diff_3_1 !=. )
 gen med_category_3_2_unequal = (med_category_diff_3_2 != 0 & med_category_diff_3_2 !=. ) 
 
-* Label the new variables
-label variable med_category_diff_2_1 "Difference in med_category between 1st and 2nd thiazide visits"
-label variable med_category_2_1_unequal "Flag: 1 if med_category unequal between 1st and 2nd thiazide visits"
 
-* now with the meds and visits sorted, remove if the med_category is different from the visit prior to thiazide and on thiazide startday
+* Label the new variables
+label variable med_category_diff_2_1 "Difference in med_category between 1st and 2nd MRA visits"
+label variable med_category_2_1_unequal "Flag: 1 if med_category unequal between 1st and 2nd MRA visits"
+
+* now with the meds and visits sorted, remove if the med_category is different from the visit prior to MRA and on MRA startday
 
 * Generate a flag variable to identify observations with multiple_same_daystart == 1
 gen flag = (med_category_prior_1_unequal == 1)
@@ -532,32 +416,22 @@ drop flag maskid_flag
 
 Output: 
 
-. distinct maskid if thiazide ==1 
-
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |      19989       2056
 
 
-
-
-	
 
 * explanation: the 2056 is from the criteria that no other meds share the SAME start day w thiazide. It does not exclude the meds that 
 was started a couple of days before or after thiazide was started. The med_category list will reflect the changes of medications across visits, 
 so it is a more robust way to ensure no other meds were started other than a thiazide. 
 
 * Fill up the BP columns
-* Generate variables for SBP at the time of thiazide occurrences
-sort maskid formdays
-by maskid: gen first_SBP = seatsys if formdays == first_onThiazide_filled
+* Generate variables for SBP at the time of MRA occurrences
+by maskid: gen first_SBP = seatsys if formdays == first_onMRA_filled
 by maskid: egen first_SBP_filled = max(first_SBP)
-by maskid: gen second_SBP = seatsys if formdays == second_onThiazide_filled
+by maskid: gen second_SBP = seatsys if formdays == second_onMRA_filled
 by maskid: egen second_SBP_filled = max(second_SBP)
-by maskid: gen third_SBP = seatsys if formdays == third_onThiazide_filled
+by maskid: gen third_SBP = seatsys if formdays == third_onMRA_filled
 by maskid: egen third_SBP_filled = max(third_SBP)
-by maskid: gen fourth_SBP = seatsys if formdays == fourth_onThiazide_filled
+by maskid: gen fourth_SBP = seatsys if formdays == fourth_onMRA_filled
 by maskid: egen fourth_SBP_filled = max(fourth_SBP)
 
 
@@ -565,42 +439,31 @@ by maskid: egen fourth_SBP_filled = max(fourth_SBP)
 * Find out who has missing SBP at baseline
 
 gen have_SBP_baseline = .
-replace have_SBP_baseline = 1 if cohort2 ==1 & cohort2 !=. & first_SBP_filled !=.
 
 Output: 
 
 . replace have_SBP_baseline = 1 if first_SBP_filled !=.
-(34,803 real changes made)
 
-. distinct maskid if have_SBP_baseline ==1
 
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |      34803       2010
 
 
 * out of the 2056, 2010 has BP recorded for baseline 
 
 
 * try this: 
-* This is my crude way of getting baseline SBP - by incorporating prior visit within 60 days provided that no medications 
-were changed across the 2 visits. 
-* Calculate the difference between the visit when thiazide is started and the prior thiazide visit
-
-	* Find prior SBP
 sort maskid formdays 
 by maskid: gen prior_SBP = seatsys[_n-1] if missing(seatsys) & !missing(seatsys[_n-1])
-
-	* Carry forward prior SBP
 by maskid: replace prior_SBP = prior_SBP[_n-1] if missing(prior_SBP) & !missing(prior_SBP[_n-1])
 
-by maskid: egen thiazide_daystart_first = min(thiazide_daystart)
-gen visit_diff_prior_Thiazide = thiazide_daystart_first - prior_onThiazide_filled 
-gen visit_diff_prior_and1_eligible = visit_diff_prior_Thiazide < 60 if !missing(visit_diff_prior_Thiazide)
+
+* Calculate the Difference Between the Visit When MRA is Started and the Prior MRA Visit:
+
+by maskid: egen mra_daystart_first = min(mra_daystart)
+gen visit_diff_prior_MRA = mra_daystart_first - prior_onMRA_filled 
+gen visit_diff_prior_and1_eligible = visit_diff_prior_MRA < 60 if !missing(visit_diff_prior_MRA)
 gen eligible_missing_first_SBP = (visit_diff_prior_and1_eligible == 1 & med_category_prior_1_unequal == 0)
 gen new_first_sbp = first_SBP_filled  
-replace new_first_sbp = prior_SBP if first_SBP_filled == . & eligible_missing_first_SBP == 1
+replace new_first_sbp = prior_SBP if missing(first_SBP_filled) & eligible_missing_first_SBP == 1
 
 * However, there could be multiple visits in that 60 days prior to thiazide start day, the above codes only take
 the most proximal visit into consideration. 
