@@ -497,11 +497,15 @@ Output:
 
 . replace have_SBP_baseline = 1 if first_SBP_filled !=.
 
+. distinct maskid if MRA == 1 & have_SBP_baseline ==1
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |       3753        452
 
 
-
-* out of the 2056, 2010 has BP recorded for baseline 
-
+* out of the 481, 452 has BP recorded for baseline 
 
 * try this: 
 sort maskid formdays 
@@ -520,17 +524,17 @@ replace new_first_sbp = prior_SBP if missing(first_SBP_filled) & eligible_missin
 
 * Multiple visits may occur within 60 days before MRA initiation. The above code only considers the most recent visit.
 * To account for all prior visits within 60 days and with unchanged medication lists (except for the addition of MRA), use Python to loop through these visits.
-
-
 * If I were to use Python for this filters, I can actually not perform this part above
 
 Output: 
 . distinct maskid if new_first_sbp !=. 
 
+
         |        Observations
         |      total   distinct
 --------+----------------------
- maskid |      35300       2051
+ maskid |      10434        479
+
 
 
 
@@ -544,10 +548,8 @@ sort maskid formdays
 
 gen day_diff_pre = min_mra_daystart - formdays
 
-* The mra initiation date should be greater than the visit date (FORMDAYS) because I want to obtain blood pressure (BP) values from visits prior to the initiation of mra.
+* The mra initiation date should be greater than the visit date (FORMDAYS) because I want to obtain blood pressure values from visits prior to the initiation of mra.
 For some participants, the date when mra was first recorded in the dataset (FORMDAYS) did not match the actual start date of the medication. It appears that these medications were initiated between visits.
-
-
 
 
 gen day_diff_pre_2 = first_mra_formdays_filled - formdays
@@ -555,9 +557,32 @@ gen diff = day_diff_pre - day_diff_pre_2
 
 gen differentformdaysstartday = 1 if day_diff_pre != day_diff_pre_2 
 distinct maskid if differentformdaysstartday == 1 
-			
+
+		. distinct maskid if differentformdaysstartday == 1 
+		
+		        |        Observations
+		        |      total   distinct
+		--------+----------------------
+		 maskid |       3839        167
+
+   
 summarize diff, detail
-			
+
+		                            diff
+		-------------------------------------------------------------
+		      Percentiles      Smallest
+		 1%          -87           -165
+		 5%          -26           -165
+		10%            0           -165       Obs              10,713
+		25%            0           -165       Sum of Wgt.      10,713
+		
+		50%            0                      Mean            -2.5554
+		                        Largest       Std. Dev.      19.90099
+		75%            1            249
+		90%            1            249       Variance       396.0494
+		95%            1            249       Skewness       .5917262
+		99%           15            249       Kurtosis       71.53757
+		   
 			                          
 
 * the histogram showed mostly in the range of plus minus 10-20. 
@@ -576,21 +601,12 @@ drop if day_diff_pre > 60 & day_diff_pre !=.
 sort maskid day_diff_pre
 by maskid: gen consistent_med = (med_category == med_category[1])
 
-
-* after I removed the day_diff_pre of >60 and <0, the diff is less skewed- looks like the outliers are gone now: 
-
-
-
-
-
 * Browse data to export to Excel as CSV file
 browse maskid formdays seatsys new_first_sbp day_diff_pre consistent_med min_mra_daystart
 
 export delimited maskid formdays seatsys new_first_sbp day_diff_pre consistent_med min_mra_daystart using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/export_preMRA_bp_to_python_9.3", replace
 
-
-save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/subset_masterdata_mra_9.3_for_preMRA_SBP_python.dta", replace
-
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/subset_masterdata_mra_9.3_for_preMRA_SBP_python.dta"
 
 * enter Python 
 import numpy as np
@@ -676,7 +692,10 @@ Inside the process_patient function, the list day_diff_pre_values is used to sto
 
 
 * back to STATA 16
-import delimited "/Users/jiawei/Downloads/bp_pre_mra_9.3.csv", clear 
+
+import delimited "/Users/jiawei/Downloads/bp_pre_mra_results_test_9.3.csv", clear 
+
+
 
 save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/preMRA_bpavg_frmpython9.3.dta"
 
@@ -688,6 +707,18 @@ by maskid: egen previsit4BP = max(bp_pre_mra_visit_4)
 egen row_mean = rowmean(previsit1BP previsit2BP previsit3BP previsit4BP) 
 rename row_mean meanSBPpreMRA
 rename meanSBPpreMRA new_first_sbp_avg
+
+. distinct maskid if new_first_sbp_avg!=. 
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |        857        472
+
+
+*** from line 508
+* Out of the 481, 452 has BP recorded for baseline, after expanding the BP baseline to 60 days prior to mra initiation, 452 --> 472 
+
 
 
 save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/preMRA_bpavg_frmpython9.3.dta", replace
@@ -704,36 +735,45 @@ sort maskid formdays
 
 Output: 
 
+		 Result                           # of obs.
+		    -----------------------------------------
+		    not matched                         9,855
+		        from master                     9,855  (_merge==1)
+		        from using                          0  (_merge==2)
+		
+		    matched                           164,055  (_merge==3)
+		    -----------------------------------------
 
 
 . distinct maskid if _merge ==3
 
+		
+		        |        Observations
+		        |      total   distinct
+		--------+----------------------
+		 maskid |     164055       8750
 
-(this 4451 number is different from prior, filter out anyone who is not on thiazide- I need that prior obs for baseline BP calculation before 
-they change their status to thiazide-users, to get systolic BP baseline for every one on thiazide and apply the filters afterwards)
+. distinct maskid if MRA == 1
+		
+		        |        Observations
+		        |      total   distinct
+		--------+----------------------
+		 maskid |       3987        481
+   
 
 * fill up the entire column with the new first SBP avg 
 egen new_first_sbp_avg_filled = min(new_first_sbp_avg) , by (maskid)
-
-. distinct maskid if MRA ==1 
-
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |      19989       2056
-
-. 
-. distinct maskid if MRA ==1 & new_first_sbp_avg_filled !=.
-
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |      19899       2029
+distinct maskid if MRA ==1 & new_first_sbp_avg_filled !=.
 
 
+		. distinct maskid if MRA ==1 & new_first_sbp_avg_filled !=.
+		
+		        |        Observations
+		        |      total   distinct
+		--------+----------------------
+		 maskid |       3949        472
 
-* Handling Missing Baseline SBP:
-
+* Handling Missing Baseline SBP
 * Missing SBP at baseline occurs when first_mra_daysstart falls between two visits. In such cases, the prior visit may have a missing seatsys or may have occurred more than 60 days before MRA initiation. Additionally, if in the visit where MRA is first started, formdays is greater than first_mra_daysstart, the SBP recorded reflects a post-MRA initiation visit. Since this SBP does not represent the baseline before MRA initiation, it is excluded from the analysis. This sequence can result in gaps in baseline SBP data for some patients.
 
 * Steps to Identify Missing SBP for MRA:
@@ -743,16 +783,54 @@ egen new_first_sbp_avg_filled = min(new_first_sbp_avg) , by (maskid)
 gen is_missing_sbp = missing(new_first_sbp_avg_filled)
 List maskid with MRA == 1 and Missing new_first_sbp_avg_filled:
 
-
 list maskid if first_mra_occurrence == 1 & is_missing_sbp == 1
 
-
+        +--------+
+        | maskid |
+        |--------|
+  2505. | S01460 |
+ 29651. | S17412 |
+ 39071. | S22568 |
+ 49083. | S28827 |
+ 52682. | S30812 |
+        |--------|
+ 64180. | S37012 |
+ 68955. | S39775 |
+ 92720. | S52654 |
+147290. | S84595 |
+        +--------+
 
 * Check if these individuals have seatsys not missing when mra_occurrence == 1
 
 . list maskid seatsys if first_mra_occurrence == 1 & is_missing_sbp == 1 & !missing(seatsys)
 
-  
+        +------------------+
+        | maskid   seatsys |
+        |------------------|
+  2505. | S01460       142 |
+ 29651. | S17412       124 |
+ 39071. | S22568       128 |
+ 64180. | S37012        97 |
+ 68955. | S39775       141 |
+        |------------------|
+ 92720. | S52654       135 |
+147290. | S84595       139 |
+        +------------------+
+
+
+      +--------------------------------------------------------------------+
+      | maskid   formdays   MRA   first_..   first_..   seatsys   new_fi~d |
+      |--------------------------------------------------------------------|
+2504. | S01460         89     0        187        173       147          . |
+2505. | S01460        187     1        187        173       142          . |
+2506. | S01460        271     1        187        173       123          . |
+      +--------------------------------------------------------------------+
+
+* For example, S01460 formdays 187 first recorded the use of MRA but the startday of MRA was
+173. the prior formdays 89 is too far out to be taken as baseline SBP, and the current 
+visit on formdays 187 reflects BP post-MRA initiaion; these individuals are excluded 
+from delta BP analysis 
+
 
 
 
@@ -786,22 +864,23 @@ restore
 
 
 * The mean days SBP was obtained prior to mra initiation
+. summarize day_diff_pre, detail 
 
-		
-                      mean_day_diff_pre
+                        day_diff_pre
 -------------------------------------------------------------
       Percentiles      Smallest
  1%            0              0
  5%            0              0
-10%            0              0       Obs               2,970
-25%            0              0       Sum of Wgt.       2,970
+10%            0              0       Obs                 858
+25%            0              0       Sum of Wgt.         858
 
-50%         13.5                      Mean           11.23998
-                        Largest       Std. Dev.       11.0202
-75%           18             58
-90%           27             58       Variance       121.4448
-95%           29             59       Skewness        .650187
-99%           41             60       Kurtosis       2.993742
+50%            2                      Mean           17.21795
+                        Largest       Std. Dev.      20.15865
+75%           34             60
+90%           51             60       Variance       406.3713
+95%           56             60       Skewness       .7115438
+99%           59             60       Kurtosis        2.02873
+
 
 
 * Post-MRA Initiation SBP Calculation:
@@ -833,25 +912,30 @@ by maskid: gen consistent_med = (med_category == med_category[1])
 
 * Filter Observations to Keep Only Those Within 90 Days Post-MRA Initiation:
 
-After applying the filters, the number of individuals reduces from 2056 to 2007.
+After applying the filters, the number of individuals reduces from to 468.
 Python Loop for Delta SBP Calculation:
 
-2007 individuals are entered into the Python loop for delta SBP calculation.
+468 individuals are entered into the Python loop for delta SBP calculation.
 
+. distinct maskid if MRA ==1
 
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |       1028        468
 
 
 
 * Save the dataset
 save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_w_preMRASBP_prepforpython9.3.dta"
 
+
+
+
 * Browse and export the data
 browse maskid formdays new_first_sbp_avg_filled min_mra_daystart diff seatsys med_category 
 
 export delimited maskid formdays new_first_sbp_avg_filled min_mra_daystart diff seatsys med_category consistent_med using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/export_postmra_bp_to_python_9.3", replace
-
-
-
 
 * enter python 
 
