@@ -1042,6 +1042,24 @@ sort maskid formdays
 * Check for consistent med_category again
 by maskid: gen consistent_med = (med_category == med_category[1])
 
+
+* The medication category at the time thiazide was first initiated is used as the reference for determining consistent_med.
+* If consistent_med turns to zero, it indicates a change in the medication category from the prior visit.
+* In this case, the SBP value in the row where consistent_med turns zero will still be used because the effect of the medication change will be reflected in the subsequent SBP measurement, not the current one.
+
+*** After the filters- to keep only maskid with visits within 90 days post thiazide initiation, 2056 --> 2007 
+
+2007 individuals enter Python loop for delta SBP calculation 
+
+
+. distinct maskid 
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |       5052       2007
+
+
 * Save the dataset
 save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_w_prethiazideSBP_prepforpython9.3.dta"
 
@@ -1049,12 +1067,6 @@ save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from 
 browse maskid formdays new_first_sbp_avg_filled min_thiazide_daystart diff seatsys med_category 
 
 export delimited maskid formdays new_first_sbp_avg_filled min_thiazide_daystart diff seatsys med_category consistent_med using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/export_postthiazide_bp_to_python_9.3", replace
-
-
-
-* The medication category at the time thiazide was first initiated is used as the reference for determining consistent_med.
-* If consistent_med turns to zero, it indicates a change in the medication category from the prior visit.
-* In this case, the SBP value in the row where consistent_med turns zero will still be used because the effect of the medication change will be reflected in the subsequent SBP measurement, not the current one.
 
 
 
@@ -1151,11 +1163,6 @@ df.to_stata('post_thiazide_BP_avg_file_9.1.dta', version=117, write_index=True)
 print("Data exported successfully")
 
 
-* My pyhton path: thiazide_BP_diff_by_visit_9.1.ipynb
-http://localhost:8889/lab/tree/thiazide_BP_diff_by_visit_9.1.ipynb
-
-
-
 # Import to STATA
 use "/Users/jiawei/Downloads/post_thiazide_BP_avg_file_9.3.dta"
 egen mean_bp_diff_thiazide = mean(bp_diff), by(maskid)
@@ -1163,122 +1170,33 @@ egen mean_bp_diff_thiazide = mean(bp_diff), by(maskid)
 
 * an excerpt of the dataset
 
-     +------------------------------------------------------------------------------------------+
-  1. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
-     | S00007 |       29 |   27 |     124 |      145 |     1002 |        1 |       . |        . |
-     |------------------------------------------------------------------------------------------|
-     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
-     |           .     |           .     |           .     |          -28     |          56     |
-     +------------------------------------------------------------------------------------------+
 
-     +------------------------------------------------------------------------------------------+
-  2. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
-     | S00007 |       58 |   56 |     117 |      145 |     1002 |        1 |     -28 |      -28 |
-     |------------------------------------------------------------------------------------------|
-     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
-     |           .     |           .     |           .     |          -28     |          56     |
-     +------------------------------------------------------------------------------------------+
-
-     +------------------------------------------------------------------------------------------+
-  3. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
-     | S00010 |      205 |   21 |     118 |      147 |        2 |        1 |       . |        . |
-     |------------------------------------------------------------------------------------------|
-     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
-     |           .     |           .     |           .     |            .     |           .     |
-     +------------------------------------------------------------------------------------------+
-
-     +------------------------------------------------------------------------------------------+
-  4. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
-     | S00109 |       59 |   23 |     103 |    129.5 |     1002 |        1 |       . |        . |
-     |------------------------------------------------------------------------------------------|
-     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
-     |           .     |           .     |           .     |        -43.5     |          58     |
-     +------------------------------------------------------------------------------------------+
-
-     +------------------------------------------------------------------------------------------+
-  5. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
-     | S00109 |       94 |   58 |      86 |    129.5 |     1002 |        1 |   -43.5 |    -43.5 |
-     |------------------------------------------------------------------------------------------|
-     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
-     |           .     |           .     |           .     |        -43.5     |          58     |
-     +------------------------------------------------------------------------------------------+
-
-     +------------------------------------------------------------------------------------------+
-  6. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
-     | S00122 |        0 |    0 |     137 |      137 |     1000 |        1 |       . |        . |
-     |------------------------------------------------------------------------------------------|
-     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
-     |           .     |           .     |           .     |    -1.666667     |          61     |
-     +------------------------------------------------------------------------------------------+
-
-     +------------------------------------------------------------------------------------------+
-  7. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
-     | S00122 |       34 |   34 |     133 |      137 |     1000 |        1 |      -4 |       -4 |
-     |------------------------------------------------------------------------------------------|
-     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
-     |           .     |           .     |           .     |    -1.666667     |          61     |
-     +------------------------------------------------------------------------------------------+
-
-     +------------------------------------------------------------------------------------------+
-  8. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
-     | S00122 |       62 |   62 |     137 |      137 |     1000 |        1 |       0 |        . |
-     |------------------------------------------------------------------------------------------|
-     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
-     |           0     |           .     |           .     |    -1.666667     |          61     |
-     +------------------------------------------------------------------------------------------+
-
-     +------------------------------------------------------------------------------------------+
-  9. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
-     | S00122 |       87 |   87 |     136 |      137 |     1000 |        1 |      -1 |        . |
-     |------------------------------------------------------------------------------------------|
-     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
-     |           .     |          -1     |           .     |    -1.666667     |          61     |
-     +------------------------------------------------------------------------------------------+
-
-     +------------------------------------------------------------------------------------------+
- 10. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
-     | S00128 |        0 |    0 |     125 |      125 |        0 |        1 |       . |        . |
-     |------------------------------------------------------------------------------------------|
-     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
-     |           .     |           .     |           .     |           -4     |          62     |
-     +------------------------------------------------------------------------------------------+
-
-     +------------------------------------------------------------------------------------------+
- 11. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
-     | S00128 |       28 |   28 |     140 |      125 |        0 |        1 |       . |        . |
-     |------------------------------------------------------------------------------------------|
-     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
-     |           .     |           .     |           .     |           -4     |          62     |
-     +------------------------------------------------------------------------------------------+
-
-     +------------------------------------------------------------------------------------------+
- 12. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
-     | S00128 |       62 |   62 |     121 |      125 |        2 |        0 |      -4 |        . |
-     |------------------------------------------------------------------------------------------|
-     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
-     |           .     |           .     |           .     |           -4     |          62     |
-     +------------------------------------------------------------------------------------------+
-
-     +------------------------------------------------------------------------------------------+
- 13. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
-     | S00193 |      133 |   41 |     111 |      131 |     1014 |        1 |     -20 |      -20 |
-     |------------------------------------------------------------------------------------------|
-     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
-     |           .     |           .     |           .     |          -20     |        64.5     |
-     +------------------------------------------------------------------------------------------+
-
-     +------------------------------------------------------------------------------------------+
- 14. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
-     | S00193 |      180 |   88 |     111 |      131 |     1014 |        1 |     -20 |        . |
-     |------------------------------------------------------------------------------------------|
-     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
-     |         -20     |           .     |           .     |          -20     |        64.5     |
-     +------------------------------------------------------------------------------------------+
-
+maskid	formdays	new_first_sbp_avg_filled	diff	seatsys	med_category	consistent_med	bp_diff	bp_diff_visit_1	bp_diff_visit_2	bp_diff_visit_3	bp_diff_visit_4	mean_diff_duration	mean_bp_diff_thiazide
+S00007	58	145	56	117	1002	1	-28	-28				56	-28
+S00010	205	147	21	118	2	1							
+S00109	59	129.5	23	103	1002	1						58	-43.5
+S00109	94	129.5	58	86	1002	1	-43.5	-43.5				58	-43.5
+S00122	0	137	0	137	1000	1						61	-1.666667
+S00122	34	137	34	133	1000	1	-4	-4				61	-1.666667
+S00122	62	137	62	137	1000	1	0		0			61	-1.666667
+S00122	87	137	87	136	1000	1	-1			-1		61	-1.666667
+S00128	0	125	0	125	0	1						62	-4
+S00128	28	125	28	140	0	1						62	-4
+S00128	62	125	62	121	2	0	-4					62	-4
+S00193	133	131	41	111	1014	1	-20	-20				64.5	-20
+S00193	180	131	88	111	1014	1	-20		-20			64.5	-20
+S00349	60	153.5	28	112	1002	1						56	-20.5
+S00349	88	153.5	56	133	1002	1	-20.5	-20.5				56	-20.5
+S00356	731	123	0	123	0	1							
+S00554	28	137	0	133	1007	1						72.5	-10
+S00554	53	137	25	118	1007	1						72.5	-10
+S00554	83	137	55	132	1007	1	-5	-5				72.5	-10
+S00554	118	137	90	122	1007	1	-15		-15			72.5	-10
 
 Footnote:
 
-* Each maskid will have a single mean_diff, representing the average of the formdays used to calculate the change in blood pressure (ΔBP). For example, if BP measurements were taken on days 36 and 58, the average formdays would be 47. This represents the mean duration of formdays for calculating the ΔSBP.
+* Each maskid will have a single mean_diff, representing the average of the formdays used to calculate the change in blood pressure 
+For example, if BP measurements were taken on days 36 and 58, the average formdays would be 47. This represents the mean duration of formdays for calculating the delta SBP 
 
 * Since each maskid has one mean_diff duration, I will take only one observation per maskid. This ensures that when I calculate the average mean_diff duration, the denominator reflects unique individuals rather than all available observations.
 
@@ -1288,217 +1206,171 @@ by maskid: gen first_obs = (_n == 1)
 
 bysort first_ob: summarize mean_diff_duration, detail
 
--> first_obs = 1
+			-> first_obs = 1
+			
+			                     mean_diff_duration
+			-------------------------------------------------------------
+			      Percentiles      Smallest
+			 1%           30             30
+			 5%           33             30
+			10%           35             30       Obs               1,600
+			25%           47             30       Sum of Wgt.       1,600
+			
+			50%           55                      Mean            55.3575
+			                        Largest       Std. Dev.      14.01821
+			75%           63             90
+			90%         74.5             90       Variance       196.5103
+			95%           83             90       Skewness       .2738789
+			99%           90             90       Kurtosis       2.705279
+			
+			
+			
+			. distinct maskid 
+			
+			        |        Observations
+			        |      total   distinct
+			--------+----------------------
+			 maskid |       5052       2007
+			
+			. distinct maskid if bp_diff !=.
+			
+			        |        Observations
+			        |      total   distinct
+			--------+----------------------
+			 maskid |       2459       1593
 
-                     mean_diff_duration
--------------------------------------------------------------
-      Percentiles      Smallest
- 1%           30             30
- 5%           33             30
-10%           35             30       Obs               4,830
-25%           47             30       Sum of Wgt.       4,830
-
-50%         55.5                      Mean           55.37783
-                        Largest       Std. Dev.      13.40746
-75%           63             90
-90%           73             90       Variance       179.7599
-95%           77             90       Skewness       .1689867
-99%           89             90       Kurtosis       2.748321
 
 
+* A total of 1593 out of 2007 BP deltas were calculated, with a mean formdays of 55, which is excellent! 
+The range of formdays spans from 30 to 90, in line with our criteria. 
+* the number went down from 2007 to 1593 secondarily to the filters in Python 
+1) BP must be >30 days post thiazide initiation 
+2) the medication list is constant across the visits 
 
 
-
-* A total of 4,830 BP deltas were calculated, with a mean formdays of 55, which is excellent! The range of formdays spans from 30 to 90, in line with our criteria. Please note that this calculation includes everyone on thiazide; the filters for Cohort 1 and Cohort 2 have not yet been applied. 
-
-save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/from python delta BP thiazide 9.2.dta"
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/from python delta BP thiazide 9.3.dta"
 
 
 * now merge the dataset with masterdata
 
-use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_thiazide_9.1.dta"
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_thiazide_9.3.dta"
 drop _merge
-merge m:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/from python delta BP thiazide 9.2.dta"
+merge m:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/from python delta BP thiazide 9.3.dta"
 drop _merge 
 
-     Result                           # of obs.
-    -----------------------------------------
-    not matched                       179,379
-        from master                   179,379  (_merge==1)
-        from using                          0  (_merge==2)
-
-    matched                            15,069  (_merge==3)
-    -----------------------------------------
+			
+			    Result                           # of obs.
+			    -----------------------------------------
+			    not matched                        74,991
+			        from master                    74,991  (_merge==1)
+			        from using                          0  (_merge==2)
+			
+			    matched                             5,052  (_merge==3)
+			    -----------------------------------------
+			
 
 
 Output: 
-. distinct maskid if cohort2 ==1
-
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |       2894       2893
 
 	                
-. distinct maskid if cohort2 ==1 & mean_bp_diff !=. 
+			. distinct maskid if mean_bp_diff !=. 
+			
+			        |        Observations
+			        |      total   distinct
+			--------+----------------------
+			 maskid |       4406       1593
+			
+			. distinct maskid if mean_bp_diff !=. & thiazide ==1
+			
+			        |        Observations
+			        |      total   distinct
+			--------+----------------------
+			 maskid |       4406       1593
+
+
+
+
+
+* only 1593 available for delta BP 
+
+			
+			. summarize mean_bp_diff, detail, if thiazide ==1
+			
+			                    mean_bp_diff_thiazide
+			-------------------------------------------------------------
+			      Percentiles      Smallest
+			 1%          -54            -95
+			 5%          -41            -95
+			10%          -35          -74.5       Obs               4,406
+			25%    -23.66667          -74.5       Sum of Wgt.       4,406
+			
+			50%       -13.75                      Mean          -14.51581
+			                        Largest       Std. Dev.      15.53865
+			75%         -4.5             35
+			90%            4             70       Variance       241.4497
+			95%            9             70       Skewness      -.1840778
+			99%         21.5             70       Kurtosis       4.228885
+			
+			. summarize mean_bp_diff, detail
+			
+			                    mean_bp_diff_thiazide
+			-------------------------------------------------------------
+			      Percentiles      Smallest
+			 1%          -54            -95
+			 5%          -41            -95
+			10%          -35          -74.5       Obs               4,406
+			25%    -23.66667          -74.5       Sum of Wgt.       4,406
+			
+			50%       -13.75                      Mean          -14.51581
+			                        Largest       Std. Dev.      15.53865
+			75%         -4.5             35
+			90%            4             70       Variance       241.4497
+			95%            9             70       Skewness      -.1840778
+			99%         21.5             70       Kurtosis       4.228885
+
+* ? The mean SBP is averaged across observations or individuals?
+* to solve this assign 1 number to each maskid and they all have only 1 observation with 1 delta BSP 
+* carry forward the mean_bp_diff_thiazide for each maskid 
+
+sort maskid formdays 
+egen mean_bp_diff_thiazide_filled = min(mean_bp_diff_thiazide) , by (maskid)
+
+
+sort maskid formdays
+by maskid: gen first_obs_fordeltaBP = (_n == 1)
+
+. summarize mean_bp_diff_thiazide_filled, detail, if first_obs_fordeltaBP ==1
+
+			                mean_bp_diff_thiazide_filled
+			-------------------------------------------------------------
+			      Percentiles      Smallest
+			 1%          -54            -95
+			 5%          -41          -74.5
+			10%          -35          -72.5       Obs               1,593
+			25%        -23.5            -67       Sum of Wgt.       1,593
+			
+			50%    -13.66667                      Mean          -14.33998
+			                        Largest       Std. Dev.      15.54032
+			75%         -4.5             33
+			90%            4             34       Variance       241.5016
+			95%            9             35       Skewness      -.2018821
+			99%           24             70       Kurtosis       4.236693
+
+* okay they are essentially the same
+* note that the duration of days post thiazide is 55.6 day - which is pretty good
+
+
+
+* create the FINAL thiazide cohort
+gen thiazide_cohort = .
+replace thiazide_cohort = 1 if mean_bp_diff_thiazide_filled !=. 
+
+. distinct maskid if thiazide_cohort ==1 
 
         |        Observations
         |      total   distinct
 --------+----------------------
- maskid |       1579       1578
-
-
-
-
-* only 1591 available to delta BP 
-* in the masterdataset, 4457 on thiazide had deltaBP measured, they are on a thiazide and 4452 is the first occurrence: 
-
-		. distinct maskid if mean_bp_diff !=. 
-		
-		        |        Observations
-		        |      total   distinct
-		--------+----------------------
-		 maskid |      13021       4457
-		
-		. distinct maskid if mean_bp_diff !=. & thiazide ==1
-		
-		        |        Observations
-		        |      total   distinct
-		--------+----------------------
-		 maskid |      13021       4457
-		
-		. distinct maskid if mean_bp_diff !=. & thiazide ==1 & thiazide_occurrence ==1
-		
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |      12969       4453
-
-
-
-* When we apply the filter med_category must be the same pre and on the visit when thiazide is started, the numbers went down from 4457 to 4338 
-
-
-. distinct maskid if mean_bp_diff !=. & thiazide ==1 & med_category_prio
-> r_1_unequal == 0
-
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |      12695       4338
-
-. distinct maskid if mean_bp_diff !=. & thiazide ==1 & med_category_prio
-> r_1_unequal == 0 & thiazide_occurrence ==1
-
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |      12643       4335
-
-
-
-* now apply the filter thiazide_solo_start
-
-. distinct maskid if mean_bp_diff !=. & thiazide ==1 & med_category_prio
-> r_1_unequal == 0 & thiazide_occurrence ==1  & multiple_same_daystart =
-> =1
-
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |       4972       2113
-
-
-
-
-
-* The limiting factor appears to be `solo_start`. After inspecting the data again, `solo_start` is confirmed to be appropriate.**
-
-* Excerpt of the dataset:
-
-| maskid | formdays | medname1    | daysstart1 | medname2   | daysstart2 | medname3   | daysstart3 | thiazide | concurrent_start | thiazide_solo_start | med_category |
-|--------|----------|-------------|------------|------------|------------|------------|------------|----------|------------------|--------------------|--------------|
-| S00022 | 0        |             |            |            |            |            |            | 0        |                  | 0                  | 0            |
-| S00022 | 29       | Metoprolol   | -6         | Lisinopril | 1          | Chlorthalidone | 1         | 1        | 1                | 0                  | 1007         |
-| S00022 | 57       | Metoprolol   | -6         | Lisinopril | 1          | Chlorthalidone | 1         | 1        | 0                | 0                  | 1007         |
-| S00022 | 92       | Metoprolol   | -6         | Lisinopril | 1          | Chlorthalidone | 1         | 1        | 0                | 0                  | 1007         |
-| S00022 | 183      | Metoprolol   | -6         | Lisinopril | 1          | Chlorthalidone | 1         | 1        | 0                | 0                  | 1007         |
-| S00022 | 274      | Lisinopril   | 1          | Chlorthalidone | 1       | Amlodipine | 1          | 1        | 0                | 0                  | 1005         |
-| S00022 | 358      | Lisinopril   | 1          | Chlorthalidone | 1       | Amlodipine | 1          | 1        | 0                | 0                  | 1005         |
-| S00022 | 457      | Lisinopril   | 1          | Chlorthalidone | 1       | Amlodipine | 1          | 1        | 0                | 0                  | 1005         |
-| S00022 | 548      | Lisinopril   | 1          | Chlorthalidone | 1       | Amlodipine | 1          | 1        | 0                | 0                  | 1005         |
-| S00022 | 639      | Lisinopril   | 1          | Chlorthalidone | 1       | Amlodipine | 1          | 1        | 0                | 0                  | 1005         |
-| S00022 | 729      |             |            |            |            |            |            | 0        |                  | 0                  | 0            |
-| S00038 | 0        |             |            |            |            |            |            | 0        |                  | 0                  | 0            |
-| S00038 | 20       | Valsartan    | 1          | Chlorthalidone | 1       |            |            | 1        | 1                | 0                  | 1000         |
-| S00038 | 55       | Valsartan    | 1          | Chlorthalidone | 1       |            |            | 1        | 0                | 0                  | 1000         |
-| S00038 | 97       | Valsartan    | 1          | Chlorthalidone | 1       |            |            | 1        | 0                | 0                  | 1000         |
-
-
-* calculate the mean Delta SBP for cohort2 
-
-. summarize mean_bp_diff, detail, if cohort2 ==1
-
-                        mean_bp_diff
--------------------------------------------------------------
-      Percentiles      Smallest
- 1%        -54.5            -95
- 5%          -42          -74.5
-10%        -35.5            -64       Obs               1,579
-25%        -23.5            -61       Sum of Wgt.       1,579
-
-50%          -13                      Mean          -13.75722
-                        Largest       Std. Dev.      16.52087
-75%    -3.666667             38
-90%            6             46       Variance       272.9393
-95%         11.5             50       Skewness      -.0326944
-99%           28             70       Kurtosis       4.129799
-
-
-
-
-* note that the duration of days post thiazide is 54- which is pretty good; the number is 1669 more than 
-1591, because these individuals have subsequent visits with SBP post thiazide initiation but
-might not have a average baseline SBP for reasons outlined above. 
-* see the below excerpt of the data
-
-
-. summarize mean_diff_duration, detail, if cohort2 ==1
-
-                     mean_diff_duration
--------------------------------------------------------------
-      Percentiles      Smallest
- 1%           30             30
- 5%           32             30
-10%           35             30       Obs               1,657
-25%         45.5             30       Sum of Wgt.       1,657
-
-50%           54                      Mean           54.12379
-                        Largest       Std. Dev.      14.11251
-75%           63             90
-90%           72             90       Variance       199.1628
-95%           82             90       Skewness       .3275306
-99%           90             90       Kurtosis       2.773284
-
-
-
-. summarize mean_diff_duration, detail, if cohort2 ==1 & mean_bp_diff!=.
-
-
-                     mean_diff_duration
--------------------------------------------------------------
-      Percentiles      Smallest
- 1%           30             30
- 5%           32             30
-10%           35             30       Obs               1,579
-25%         45.5             30       Sum of Wgt.       1,579
-
-50%     53.66667                      Mean           54.03512
-                        Largest       Std. Dev.      14.12283
-75%           63             90
-90%           72             90       Variance       199.4544
-95%           82             90       Skewness       .3454324
-99%           90             90       Kurtosis       2.782485
+ maskid |      28359       1593
 
 
 
