@@ -61,41 +61,51 @@ Output:
           (3 observations deleted)
 
 
-drop if visitcode == "CLO"
+* Will merge with BP data now- I have tried to merge it later on but ran into issues where the maskid has only 
+BP data without meds data presumably the maskid had the observations removed from some of the filters
 
-          . drop if visitcode == "CLO"
-          (7,866 observations deleted)
-          
-          . distinct maskid 
-          
-                  |        Observations
-                  |      total   distinct
-          --------+----------------------
-           maskid |     185417       9344
-          
-          
 
-// Define the list of medication names to search for
-// Create a local macro with the list of medications
-local medlist `""amiloride HCTZ" "amiloride/PHCTZ" "amiloride/HCTZ" "AMLORIDE/HCTZ" "atenolol chlorthalidone" "atenolol / chlorthalidone" "Atenolol /Chlorthalidone" "atenolol-chlorthalidone" "atenolol/chlorthalidone" "Atenolol/Chlorthalidone" "Atenolol/Chlorthalize" "atenolol/HCTZ" "azilsartan / chlorthalidone" "azilsartan/chlorthalidone" "azilsartan/chlothalidone" "benazepril/hctz" "benicar hct" "benicar/hctz" "diovan hct" "diovan hctz" "diovan/hct" "Diovan/HCTZ" "Diovan/Hct" "diovan/hctz" "Hydrochlorothiazide / Triamterene" "hydrochlorothiazide triamte" "hydrochlorothiazide triamterene" "hydrochlorothiazide/lisinopril" "hydrochlorothiazide/triamterene" "Hydrochlorothiazide/lisinopril" "Hydrochlorothiazide/lisinoprol" "hct triamterene" "hct z/triamterene" "HCTZ 25/TRIAMTERENE 37.5MG TAB" "hctz / lisinopril" "HCTZ /Triamterene" "hctz / lisonopril" "hctz 12.5/ lisonopril" "hctz 50/triam 75" "HCTZ-Aldactone" "hctz/chlorthalidine" "HCTZ/Lisinopril" "hctz/lisinopril" "hctz/olemesarten" "hctz/quinapril" "hctz/ triamterene" "HCTZ/ LISINOPRIL" "hctz/triamterene" "HCTZ/TRIAMTERENE" "HCTZ/Triamterene" "hyzaar" "hyzaar/Hctz" "lisinopril hct" "Lisinopril / HCTZ" "Lisinopril /HCTZ" "lisinopril-hctz" "lisinopril/ hydrochlorothiaz" "Lisinopril-HCT" "lisinopril/HCTZ" "Lisinopril-HCTZ" "lisinopril hydrochlorothiaz" "Lisinopril-Hydrochlorothiazide" "lisinopril hydrochlorothiazide" "lisinopril/hctz" "Lisinopril/HCTZ" "lisinoprilHCTZ" "losartan / hctz" "losartan/HCTZ" "losartan/hctz" "monopril hct" "moexipril / hctz" "spironolactone hct2" "spironolactone hctz" "spironolactone hydrochlorot" "spironolactone hydrochlorothiazide" "spironolactone-hctz" "spironolactone/HCTZ" "Triamterene HCTZ" "Triamterene Hydrochlorothiazide" "Triamterene hydrochlorothiaze" "Triamterene/ HCTZ" "Triamterene/HCTZ" "Triamterene/Hctz" "TRIAMETERENE/HCTZ" "TRIAMTERENE HCTZ" "TRIAMTERENE/HCTZ" "triam hctz" "triam/hctz" "triameterene" "triameterene/hydrochlorothiazide" "triamterene hctz" "triamterene / hctz" "triamterene hctz" "triamterene hydrochlorothia" "triamterene hydrochlorothiazide" "triamterene-hctz" "triamterene/ hctz" "triamterene/HCTZ" "triamterene/hctz" "triamterene/hydrochlorothia" "valsartan hctz" "valsartan/hctz" "ATENOLOL/CHLORTHALIDONE" "AZISARTAN/HCT" "Amiloride HCTZ" "Atenolol/HCTZ" "Azilsartan/chlothalidone" "Benazapril/HCTZ (PCP-prescribed)" "Benecor/HCTZ" "Benzapril/HCTZ" "Bisoprolol w/hctz (per her PCP)" "DIOVAN/ HCTZ" "DIOVAN HTC" "DIOVAN HCT" "Diovan HCT" "Diovan HCT (PCP prescribed)" "Diovan hct" "Diovan/hctz" "EDARBYCLOR/Chlorthalidone" "EDARBYCLOR" "Edarbyclor" "Enalapril/HCTZ" "Hydroclorothiazide/lisinopril" "Lisinopril HCTZ" "Losartan / HCTZ (PCP-prescribed, 1/2 )" "Losartan HCTZ" "Losartan potassium HCTZ" "Losartan/HCTZ" "Losartan/hctz" "McCardis HCTZ" "Micardis/HCTZ" "Spironolactone-HCTZ" "Triamterine/HCTZ" "Valsartan/HCTZ" "aldactazide" "amiloride & hctz" "amiloride / hctz" "amiloride /hctz" "amiloride hctz (5/50 mg tab (take 1)" "amiloride/hctz" "amoxipril/ HCTZ" "benazapril/hctz" "bisoprolol hctz" "enalapril hydrochlorothiazi" "hydrochlorothiazide / lisinopril" "isinopril hydrochlorothiaz" "lisinipril hctz" "lisinopril hctz" "lisinopril/hydrochlorothiazide" "maxzide" "maxide" "microzide (Hctz)" "olmesartan/hctz" "spironactone-hctz" "spironalactone/htct" "triamterene  hctz" "amiloride hctz" "HCTZ/triamterene" "HCTZ/lisinopril" "amiloride &" "amiloride & (5/50 mg.)   (take 1/2 tab)" "amiloride w/" "amiloride with" "amlodipine/hctz" "Amiloride w/" "lisinopril HCTZ" "amloride/hydrochloride and hydrochlorothiazide""'
+. merge m:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (fr
+> om Maria)/analysis/data/allbp_intensive+standard.dta"
+(note: variable visitorder was byte, now int to accommodate using data's values)
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        13,328
+        from master                    10,457  (_merge==1)
+        from using                      2,871  (_merge==2)
 
-forvalues i = 1/10 { 
-    foreach med of local medlist {
-        drop if medname`i' == "`med'"
-    }
-} 
+    matched                           182,889  (_merge==3)
+    -----------------------------------------
 
-Output: 
+. distinct maskid 
 
-		. distinct maskid 
-		
         |        Observations
         |      total   distinct
 --------+----------------------
- maskid |     178133       9251
+ maskid |     196217       9347
 
 
-		
+* Drop the CLOSEOUT visit, this simple code will still keep the rest of the observation for that maskid as it is
+. drop if visitcode == "CLO"
+(7,980 observations deleted)
+
+. distinct maskid 
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |     188237       9347
+
+
+. distinct maskid if _merge ==3
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |     175386       9344
+
+
+
 
 * Sort the data by maskid and formdays
 sort maskid formdays
@@ -107,15 +117,16 @@ forvalues i = 1/10 {
 }
 
 Output: 
-		. distinct maskid if thiazide ==1 
+. distinct maskid if thiazide ==1 
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |      95537       6925
+
 		
-		        |        Observations
-		        |      total   distinct
-		--------+----------------------
-		 maskid |      88351       6675
-		
-		
-		            
+
+* Now remove on thiazide at baseline
 
 * Generate a flag for each medname column for thiazide 
 forvalues i = 1/10 {
@@ -127,16 +138,6 @@ gen any_thiazide = (flag_thiazide1 + flag_thiazide2 + flag_thiazide3 + flag_thia
 
 * Identify the first occurrence of thiazide for each maskid
 by maskid (formdays): gen first_thiazide_occurrence = any_thiazide == 1 & sum(any_thiazide) == 1
-
-
-Output: 
-
-		. distinct maskid if first_thiazide_occurrence == 1
-		
-		        |        Observations
-		        |      total   distinct
-		--------+----------------------
-		 maskid |       6675       6675
 
 
 * explanation: sum(any_thiazide) is a running sum of the any_thiazide variable within each maskid group.
@@ -153,31 +154,12 @@ by maskid: egen first_thiazide_formdays_filled = min(first_thiazide_formdays)
 * explanation: Since we only filled in first_thiazide_formdays for the first occurrence, 
 this minimum will be the formdays of the first thiazide occurrence. This function allows us to know when thiazide (in regards of formdays) was first started for a patient, regardless of which row we're looking at for that patient.
 
-
  * Generate a column to store the daystart for thiazide medications
 sort maskid formdays
 gen thiazide_daystart = .
 forvalues i = 1/10 {
     replace thiazide_daystart = daysstart`i' if (strpos(lower(medname`i'), "hctz") > 0 | strpos(lower(medname`i'), "hct") > 0 | strpos(lower(medname`i'), "hydro") > 0 | strpos(lower(medname`i'), "chlorth") > 0 | strpos(lower(medname`i'), "chloro") > 0 | strpos(lower(medname`i'), "azide") > 0 | strpos(lower(medname`i'), "lidone") > 0)| strpos(lower(medname`i'), "indapa") > 0 |strpos(lower(medname`i'), "metolaz") > 0 |strpos(lower(medname`i'), "diurel") > 0
 }
-
-* Generate a variable to count occurrences
-gen thiazide_daystart_same_count = 0
-
-* Loop through daysstart1 to daysstart10
-forvalues i = 1/10 {
-    replace thiazide_daystart_same_count = thiazide_daystart_same_count + 1 if daysstart`i' == thiazide_daystart & thiazide_daystart != .
-}
-
-* Generate indicator for multiple occurrences
-gen multiple_same_daystart = (thiazide_daystart_same_count > 1) if thiazide_daystart != .
-
-* Optional: Label the new variable
-label variable multiple_same_daystart "More than one occurrence of daystart thats identical to thiazide_daystart in daysstart1-10"
-
-
-
-
 
 
 gen first_thiazide_daysstart =.
@@ -188,12 +170,6 @@ forvalues j = 1/10 {
 by maskid: egen first_thiazide_daysstart_filled = min(first_thiazide_daysstart)
 
 * explanation: this is to capture the correct daysstart for the first thiazide occurrence, which could be in any of the 10 medication columns. Repeat this value for every row of each patient, which is useful for subsequent analyses or when checking for changes in medication timing.
-
-
-
-
-
-
 
 
 
@@ -212,47 +188,160 @@ Output:
         |        Observations
         |      total   distinct
 --------+----------------------
- maskid |      12133        980
+ maskid |      14618       1136
 
 . distinct maskid if thiazide == 1 & min_thiazide_daystart >= 0
 
         |        Observations
         |      total   distinct
 --------+----------------------
- maskid |      76218       5695
+ maskid |      80919       5789
 
 
 
-      
+* Generate a flag variable to identify observations with min_thiazide_daystart < 0
+gen flag = (min_thiazide_daystart < 0)
 
-drop if min_thiazide_daystart < 0
+* Create a variable that is 1 if any observation for a maskid has flag = 1
+bysort maskid: egen maskid_flag = max(flag)
+
+* Keep only observations where maskid_flag is 0 (i.e., remove all observations for maskids with min_thiazide_daystart < 0)
+keep if maskid_flag == 0
+
+* Clean up
+drop flag maskid_flag
+
+* Optional: Display the number of observations removed
+count
+display "Remaining observations: " r(N)
+
 
 Output: 
 
-. distinct maskid if thiazide==1
+. distinct maskid 
 
         |        Observations
         |      total   distinct
 --------+----------------------
- maskid |      76218       5695
+ maskid |     165419       8211
 
-. 
-. distinct maskid if thiazide==1 & first_thiazide_occurrence ==1
-
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |       5695       5695
-
-
-
-
-. distinct maskid if thiazide==1 & first_thiazide_occurrence ==1 & multiple_same_daystart ==0
+. distinct maskid if thiazide ==1
 
         |        Observations
         |      total   distinct
 --------+----------------------
- maskid |       3010       3010
+ maskid |      80919       5789
+
+
+
+
+
+* Now after removing those on thiazide at baseline, work on removing those on thiazide combo meds
+
+// Define the list of medication names to search for
+// Create a local macro with the list of medications
+local medlist `""amiloride HCTZ" "amiloride/PHCTZ" "amiloride/HCTZ" "AMLORIDE/HCTZ" "atenolol chlorthalidone" "atenolol / chlorthalidone" "Atenolol /Chlorthalidone" "atenolol-chlorthalidone" "atenolol/chlorthalidone" "Atenolol/Chlorthalidone" "Atenolol/Chlorthalize" "atenolol/HCTZ" "azilsartan / chlorthalidone" "azilsartan/chlorthalidone" "azilsartan/chlothalidone" "benazepril/hctz" "benicar hct" "benicar/hctz" "diovan hct" "diovan hctz" "diovan/hct" "Diovan/HCTZ" "Diovan/Hct" "diovan/hctz" "Hydrochlorothiazide / Triamterene" "hydrochlorothiazide triamte" "hydrochlorothiazide triamterene" "hydrochlorothiazide/lisinopril" "hydrochlorothiazide/triamterene" "Hydrochlorothiazide/lisinopril" "Hydrochlorothiazide/lisinoprol" "hct triamterene" "hct z/triamterene" "HCTZ 25/TRIAMTERENE 37.5MG TAB" "hctz / lisinopril" "HCTZ /Triamterene" "hctz / lisonopril" "hctz 12.5/ lisonopril" "hctz 50/triam 75" "HCTZ-Aldactone" "hctz/chlorthalidine" "HCTZ/Lisinopril" "hctz/lisinopril" "hctz/olemesarten" "hctz/quinapril" "hctz/ triamterene" "HCTZ/ LISINOPRIL" "hctz/triamterene" "HCTZ/TRIAMTERENE" "HCTZ/Triamterene" "hyzaar" "hyzaar/Hctz" "lisinopril hct" "Lisinopril / HCTZ" "Lisinopril /HCTZ" "lisinopril-hctz" "lisinopril/ hydrochlorothiaz" "Lisinopril-HCT" "lisinopril/HCTZ" "Lisinopril-HCTZ" "lisinopril hydrochlorothiaz" "Lisinopril-Hydrochlorothiazide" "lisinopril hydrochlorothiazide" "lisinopril/hctz" "Lisinopril/HCTZ" "lisinoprilHCTZ" "losartan / hctz" "losartan/HCTZ" "losartan/hctz" "monopril hct" "moexipril / hctz" "spironolactone hct2" "spironolactone hctz" "spironolactone hydrochlorot" "spironolactone hydrochlorothiazide" "spironolactone-hctz" "spironolactone/HCTZ" "Triamterene HCTZ" "Triamterene Hydrochlorothiazide" "Triamterene hydrochlorothiaze" "Triamterene/ HCTZ" "Triamterene/HCTZ" "Triamterene/Hctz" "TRIAMETERENE/HCTZ" "TRIAMTERENE HCTZ" "TRIAMTERENE/HCTZ" "triam hctz" "triam/hctz" "triameterene" "triameterene/hydrochlorothiazide" "triamterene hctz" "triamterene / hctz" "triamterene hctz" "triamterene hydrochlorothia" "triamterene hydrochlorothiazide" "triamterene-hctz" "triamterene/ hctz" "triamterene/HCTZ" "triamterene/hctz" "triamterene/hydrochlorothia" "valsartan hctz" "valsartan/hctz" "ATENOLOL/CHLORTHALIDONE" "AZISARTAN/HCT" "Amiloride HCTZ" "Atenolol/HCTZ" "Azilsartan/chlothalidone" "Benazapril/HCTZ (PCP-prescribed)" "Benecor/HCTZ" "Benzapril/HCTZ" "Bisoprolol w/hctz (per her PCP)" "DIOVAN/ HCTZ" "DIOVAN HTC" "DIOVAN HCT" "Diovan HCT" "Diovan HCT (PCP prescribed)" "Diovan hct" "Diovan/hctz" "EDARBYCLOR/Chlorthalidone" "EDARBYCLOR" "Edarbyclor" "Enalapril/HCTZ" "Hydroclorothiazide/lisinopril" "Lisinopril HCTZ" "Losartan / HCTZ (PCP-prescribed, 1/2 )" "Losartan HCTZ" "Losartan potassium HCTZ" "Losartan/HCTZ" "Losartan/hctz" "McCardis HCTZ" "Micardis/HCTZ" "Spironolactone-HCTZ" "Triamterine/HCTZ" "Valsartan/HCTZ" "aldactazide" "amiloride & hctz" "amiloride / hctz" "amiloride /hctz" "amiloride hctz (5/50 mg tab (take 1)" "amiloride/hctz" "amoxipril/ HCTZ" "benazapril/hctz" "bisoprolol hctz" "enalapril hydrochlorothiazi" "hydrochlorothiazide / lisinopril" "isinopril hydrochlorothiaz" "lisinipril hctz" "lisinopril hctz" "lisinopril/hydrochlorothiazide" "maxzide" "maxide" "microzide (Hctz)" "olmesartan/hctz" "spironactone-hctz" "spironalactone/htct" "triamterene  hctz" "amiloride hctz" "HCTZ/triamterene" "HCTZ/lisinopril" "amiloride &" "amiloride & (5/50 mg.)   (take 1/2 tab)" "amiloride w/" "amiloride with" "amlodipine/hctz" "Amiloride w/" "lisinopril HCTZ" "amloride/hydrochloride and hydrochlorothiazide""'
+
+****** this function only drops the observation- it still keeps the maskid and the rest of the observations that do not have combo meds
+the problem is the patient might start a thiazide again later and got into the analysis this way ******
+
+					forvalues i = 1/10 { 
+					    foreach med of local medlist {
+					        drop if medname`i' == "`med'"
+					    }
+					} 
+
+
+**** try this - it works!
+* Generate a flag variable to identify observations with specified medications
+gen flag = 0
+forvalues i = 1/10 {
+    foreach med of local medlist {
+        replace flag = 1 if medname`i' == "`med'"
+    }
+}
+
+* Create a variable that is 1 if any observation for a maskid has flag = 1
+bysort maskid: egen maskid_flag = max(flag)
+
+* Keep only observations where maskid_flag is 0 (i.e., remove all observations for maskids with flagged medications)
+keep if maskid_flag == 0
+
+* Clean up
+drop flag maskid_flag
+
+
+
+Output: 
+			. distinct maskid 
+			
+			        |        Observations
+			        |      total   distinct
+			--------+----------------------
+			 maskid |     143986       7212
+			
+			. distinct maskid if thiazide ==1
+			
+			        |        Observations
+			        |      total   distinct
+			--------+----------------------
+			 maskid |      65399       4797
+
+
+
+
+
+* Generate a variable to count occurrences
+gen thiazide_daystart_same_count = 0
+
+* Loop through daysstart1 to daysstart10
+forvalues i = 1/10 {
+    replace thiazide_daystart_same_count = thiazide_daystart_same_count + 1 if daysstart`i' == thiazide_daystart & thiazide_daystart != .
+}
+
+* Generate indicator for multiple occurrences
+gen multiple_same_daystart = (thiazide_daystart_same_count > 1) if thiazide_daystart != .
+
+* Optional: Label the new variable
+label variable multiple_same_daystart "More than one occurrence of daystart thats identical to thiazide_daystart in daysstart1-10"
+
+
+*** Now remove anyone who started thiazide the same day with other meds
+
+* Generate a flag variable to identify observations with multiple_same_daystart == 1
+gen flag = (multiple_same_daystart == 1)
+
+* Create a variable that is 1 if any observation for a maskid has flag = 1
+bysort maskid: egen maskid_flag = max(flag)
+
+* Keep only observations where maskid_flag is 0 (i.e., remove all observations for maskids with multiple_same_daystart == 1)
+keep if maskid_flag == 0
+
+* Clean up
+drop flag maskid_flag
+
+* Optional: Display the number of observations removed
+count
+display "Remaining observations: " r(N)
+
+
+
+Output: 
+
+			. distinct maskid 
+			
+			        |        Observations
+			        |      total   distinct
+			--------+----------------------
+			 maskid |      88120       4571
+			
+			. distinct maskid if thiazide ==1
+			
+			        |        Observations
+			        |      total   distinct
+			--------+----------------------
+			 maskid |      25044       2156
+
 
 
 
@@ -268,21 +357,46 @@ by maskid: gen thiazide_occurrence = sum(thiazide == 1 & (thiazide[_n-1] == 0 | 
 
 * if thiazide turns from 1 to 0 and then 1 again, it will be marked as occurrence == 2
 
-* Generate a thiazide cohort
-gen cohort = .
-replace cohort = 1 if thiazide == 1 & first_thiazide_occurrence ==1 & multiple_same_daystart ==0
 
-				
-				Output: 
-								
-				
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |       3010       3010
+Output: 
 
-				
-								
+			. distinct maskid if thiazide ==1 & thiazide_occurrence == 1
+			
+			        |        Observations
+			        |      total   distinct
+			--------+----------------------
+			 maskid |      20695       2156
+			
+			. distinct maskid if thiazide ==1 & thiazide_occurrence == 2
+			
+			        |        Observations
+			        |      total   distinct
+			--------+----------------------
+			 maskid |       3578        567
+
+
+
+* keep only the first occurrence
+			. drop if thiazide_occurrence > 1 & thiazide_occurrence !=.
+			(6,244 observations deleted)
+			
+			. distinct maskid if thiazide ==1 & thiazide_occurrence == 1
+			
+			        |        Observations
+			        |      total   distinct
+			--------+----------------------
+			 maskid |      20695       2156
+			
+			. distinct maskid if thiazide ==1 & thiazide_occurrence == 2
+			
+			        |        Observations
+			        |      total   distinct
+			--------+----------------------
+			 maskid |          0          0
+
+
+
+							
 
 * To know the previous visit before thiazide turns 1
 gen prior_onThiazide = .
@@ -290,10 +404,6 @@ by maskid: replace prior_onThiazide = formdays[_n-1] if thiazide == 1 & (thiazid
 
 * This subsequent code ensures that only the 1st occurrence is used
 replace prior_onThiazide = . if thiazide_occurrence >= 2 & prior_onThiazide != .
-
-
-* Merge with BP data 
-merge m:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/allbp_intensive+standard.dta"
 
 * Sort data by maskid and formdays
 sort maskid formdays  
@@ -366,8 +476,6 @@ label variable med_category "Sum of medication categories"
 drop med_oxin med_olol med_ipine_azem med_mra med_fur_bum_tors med_hydral_azine med_pril_artan med_idine_clon med_minoxi  med_triam med_guanfacine 
 
 
-
-
 sort maskid formdays 
  
 * Get med_category for first and second thiazide visits
@@ -405,29 +513,39 @@ gen med_category_3_2_unequal = (med_category_diff_3_2 != 0 & med_category_diff_3
 label variable med_category_diff_2_1 "Difference in med_category between 1st and 2nd thiazide visits"
 label variable med_category_2_1_unequal "Flag: 1 if med_category unequal between 1st and 2nd thiazide visits"
 
-* Update cohort criteria
-* Generate a thiazide cohort
-gen cohort2 =.
+* now with the meds and visits sorted, remove if the med_category is different from the visit prior to thiazide and on thiazide startday
 
-* my cohort1 was = thiazide_occurrence == 1 and thiazide_solo_start == 1 without the med_category_prior_1_unequal == 0
+* Generate a flag variable to identify observations with multiple_same_daystart == 1
+gen flag = (med_category_prior_1_unequal == 1)
 
-replace cohort2 = 1 if cohort == 1 & med_category_prior_1_unequal == 0 
+* Create a variable that is 1 if any observation for a maskid has flag = 1
+bysort maskid: egen maskid_flag = max(flag)
+
+* Keep only observations where maskid_flag is 0 (i.e., remove all observations for maskids with multiple_same_daystart == 1)
+keep if maskid_flag == 0
+
+* Clean up
+drop flag maskid_flag
+
+
+2156 --> 2056 
+
 
 Output: 
 
-. distinct maskid if cohort2 ==1
-
+. distinct maskid if thiazide ==1 
 
         |        Observations
         |      total   distinct
 --------+----------------------
- maskid |       2895       2894
+ maskid |      19989       2056
+
 
 
 
 	
 
-* explanation: the 3010 is from the criteria that no other meds share the SAME start day w thiazide. It does not exclude the meds that 
+* explanation: the 2056 is from the criteria that no other meds share the SAME start day w thiazide. It does not exclude the meds that 
 was started a couple of days before or after thiazide was started. The med_category list will reflect the changes of medications across visits, 
 so it is a more robust way to ensure no other meds were started other than a thiazide. 
 
@@ -452,20 +570,18 @@ replace have_SBP_baseline = 1 if cohort2 ==1 & cohort2 !=. & first_SBP_filled !=
 
 Output: 
 
-            . . distinct maskid if have_SBP_baseline ==1 & cohort2 ==1
-		
-		
+. replace have_SBP_baseline = 1 if first_SBP_filled !=.
+(34,803 real changes made)
+
+. distinct maskid if have_SBP_baseline ==1
 
         |        Observations
         |      total   distinct
 --------+----------------------
- maskid |       2820       2819
+ maskid |      34803       2010
 
-		
-				
-               
 
-* explanation: out of the total 2894 eligible subjects (cohort2 ==1), 2894-2819 has missing SBP 
+* out of the 2056, 2010 has BP recorded for baseline 
 
 
 * try this: 
@@ -494,93 +610,90 @@ the most proximal visit into consideration.
 2) the medication list stays the same except for the addition of thiazide during thiazide start day
 
 
+
+* If I were to use Python for this filters, I can actually not perform line 588 to 610
+
 Output: 
-. distinct maskid if new_first_sbp!=.  & cohort2 ==1
+. distinct maskid if new_first_sbp !=. 
 
         |        Observations
         |      total   distinct
 --------+----------------------
- maskid |       2878       2877
+ maskid |      35300       2051
+
 
 
 
 * save as masterdata 
-save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_9.3.dta"
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_thiazide_9.3.dta"
 
 * Generate a subdata for calculation of average BP pre-MRA initiation 
-use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_9.3.dta"
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_thiazide_9.3.dta"
 sort maskid formdays
 
-
-Output: 
-. distinct maskid if cohort2 ==1
-
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |       2895       2894
-
-		
 gen day_diff_pre = min_thiazide_daystart - formdays
 
 * The thiazide initiation date should be greater than the visit date (FORMDAYS) because I want to obtain blood pressure (BP) values from visits prior to the initiation of thiazide.
-* In a previous analysis, I discovered that I am short of around 20 individuals who has baseline SBP compared to who has first_SBP_fillled by applying the condition "day_diff_pre < 0" using "min_thiazide_daystart" to calculate the day difference for later calculation of averaged baseline SBP. This happened because, for some participants like s01044, 201958, s02367, and s02400, the date when thiazide was first recorded in the dataset (FORMDAYS) did not match the actual start date of the medication. It appears that these medications were initiated between visits.
+* In a previous analysis, I discovered that I am short of around 20 individuals who has baseline SBP compared to who has first_SBP_fillled by applying the condition "day_diff_pre < 0" using "min_thiazide_daystart" to calculate the day difference for later calculation of averaged baseline SBP. This happened because, for some participants, the date when thiazide was first recorded in the dataset (FORMDAYS) did not match the actual start date of the medication. It appears that these medications were initiated between visits.
 
 For example:
-Participant s02400 started thiazide on day 1752, but it was first recorded in the dataset on day 1782, with a systolic blood pressure measurement available for day 1782 but not for day 1752.
-Participant S02367 began thiazide on day 4, but it was first recorded on formdays 28, resulting in a day_diff_pre of -24, hence, exluded.
-Participant S99574 initiated thiazide on day 685, but it was first recorded on formdays 761, resulting in a day_diff_pre of -76, also excluded. Note that these individuals have seatsys recorded and that is essentially the first_SBP_filled. 
-This mismatch caused certain individuals to be excluded from the analysis because the calculated difference between the medication start date and the recorded date (day_diff_pre) was negative, indicating that the medication initiation occurred between recorded visits. So the number of individuals who has a baseline SBP using this method is LESS than simply taking the first_SBP as baseline. (see line 700s)
+Participant s02400 started thiazide on day 1752, but it was first recorded in the dataset on day 1782, with a systolic blood pressure measurement available for day 1782 but not for day 1752. the difference is 30 days apart- the day_diff_pre will be -30 whereas the day_diff_pre_2 will be 0 as seen in row 3 shown below. the day_diff_pre of -30 should be excluded because the meds is started 30 days PRIOR to the formday 1782 visit and hence
+the SBP on formdays 1782 is a post-thiazide BP change. 
 
 Excerpt of such data discrepancies: 
 Output: 
 
-maskid	formdays	first_thiazide_formdays_filled	min_thiazide_daystart	seatsys	cohort2	new_first_sbp	day_diff_pre	day_diff_pre_2	diff
-S99227	0	0	14	139	1	139	14	0	14
-S99227	49	0	14	147		139	-35	-49	
-S99227	71	0	14	146		139	-57	-71	
-S99227	98	0	14	117		139	-84	-98	
+maskid	formdays	seatsys	thiazide	first_thiazide_formdays_filled	first_thiazide_daysstart_filled	min_thiazide_daystart	first_SBP_filled	new_first_sbp	day_diff_pre	day_diff_pre_2	differentformdaysstartday	diff
+S02400	1642	163	0	1782	1752	1752	123	123	110	140	1	-30
+S02400	1662	145	0	1782	1752	1752	123	123	90	120	1	-30
+S02400	1782	123	1	1782	1752	1752	123	123	-30	0	1	-30
 
 
-* gen day_diff_pre_2 = first_thiazide_formdays_filled - formdays
+
+
+
+gen day_diff_pre_2 = first_thiazide_formdays_filled - formdays
+gen diff = day_diff_pre - day_diff_pre_2 
+
+gen differentformdaysstartday = 1 if day_diff_pre != day_diff_pre_2 
+(67,972 missing values generated)
+
+			. distinct maskid if differentformdaysstartday == 1 
+			
+			        |        Observations
+			        |      total   distinct
+			--------+----------------------
+			 maskid |      12071        685
+			
 
 		
-		. count if day_diff_pre != day_diff_pre_2 & cohort2 == 1
-				  1,006
-		. gen diff = day_diff_pre - day_diff_pre_2 if cohort2 == 1
-		(191,554 missing values generated)
-		
-		. summarize diff
-		
-		    Variable |        Obs        Mean    Std. Dev.       Min        Max
-		-------------+---------------------------------------------------------
-		        diff |      2,895   -.7944732    35.88308       -366       1101
-		
-		. summarize diff, detail
-		
-		                            diff
-		-------------------------------------------------------------
-		      Percentiles      Smallest
-		 1%          -62           -366
-		 5%           -8           -366
-		10%            0           -364       Obs               2,895
-		25%            0           -323       Sum of Wgt.       2,895
-		
-		50%            0                      Mean          -.7944732
-		                        Largest       Std. Dev.      35.88308
-		75%            1            366
-		90%            1            366       Variance       1287.595
-		95%            2           1069       Skewness        18.4667
-		99%           13           1101       Kurtosis       604.2084
+			. summarize diff, detail
+			
+			                            diff
+			-------------------------------------------------------------
+			      Percentiles      Smallest
+			 1%          -49           -366
+			 5%            0           -366
+			10%            0           -366       Obs              35,639
+			25%            0           -366       Sum of Wgt.      35,639
+			
+			50%            0                      Mean          -.3737759
+			                        Largest       Std. Dev.      25.25771
+			75%            1           1069
+			90%            1           1069       Variance        637.952
+			95%            1           1069       Skewness       14.62392
+			99%           12           1069       Kurtosis       807.0759
+
+
 
 
 * the histogram showed mostly in the range of plus minus 10-20. 
 * therefore, I will use "first_thiazide_daystart" or "min_thiazide_daystart" over "first_thiazide_formdays" 
 
-drop if day_diff_pre < 0 
+drop if day_diff_pre < 0 & day_diff_pre !=.
 
 * Limit the prior visit to within 60 days
-drop if day_diff_pre > 60 
+drop if day_diff_pre > 60 & day_diff_pre !=.
 
 * Instead of sorting by formdays
 * Sort by day_diff_pre so the first observation of the med_category, which is the day thiazide is started,
@@ -594,33 +707,30 @@ by maskid: gen consistent_med = (med_category == med_category[1])
 
 		. summarize diff, detail
 		
-
                             diff
 -------------------------------------------------------------
       Percentiles      Smallest
- 1%            0              0
- 5%            0              0
-10%            0              0       Obs               2,714
-25%            0              0       Sum of Wgt.       2,714
+ 1%          -27           -366
+ 5%            0           -166
+10%            0           -154       Obs               2,976
+25%            0           -154       Sum of Wgt.       2,976
 
-50%            0                      Mean           .6230656
-                        Largest       Std. Dev.      2.235441
-75%            1             28
-90%            1             31       Variance       4.997197
-95%            2             31       Skewness       9.797213
-99%           10             48       Kurtosis       138.2854
-
-
+50%            0                      Mean          -.0967742
+                        Largest       Std. Dev.      12.48017
+75%            1             63
+90%            1             98       Variance       155.7547
+95%            2            153       Skewness      -7.544163
+99%           13            278       Kurtosis       379.3699
 
 
 
 * Browse data to export to Excel as CSV file
 browse maskid formdays seatsys new_first_sbp day_diff_pre consistent_med min_thiazide_daystart
 
-export delimited maskid formdays seatsys new_first_sbp day_diff_pre consistent_med min_thiazide_daystart using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/export_preThiazide_bp_to_python_9.2", replace
+export delimited maskid formdays seatsys new_first_sbp day_diff_pre consistent_med min_thiazide_daystart using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/export_preThiazide_bp_to_python_9.3", replace
 
 
-save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/subset_masterdata_thiazide_9.2_for_preThiazide_SBP_python.dta"
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/subset_masterdata_thiazide_9.3_for_preThiazide_SBP_python.dta", replace
 
 
 * enter Python 
@@ -702,8 +812,8 @@ print(df[['maskid', 'day_diff_pre', 'consistent_med', 'seatsys'] +
         ['avg_bp_pre_thiazide', 'mean_day_diff_pre', 'median_day_diff_pre', 'min_day_diff_pre', 'max_day_diff_pre']])
 
 # Save the results
-df.to_csv('bp_pre_thiazide_results_test_9.1.csv', index=False)
-print("Results saved to 'bp_pre_thiazide_results_test_9.1.csv'")
+df.to_csv('bp_pre_thiazide_9.3.csv', index=False)
+
 
 
 Footnote:
@@ -711,10 +821,9 @@ Inside the process_patient function, the list day_diff_pre_values is used to sto
 
 
 * back to STATA 16
-import delimited "/Users/jiawei/Downloads/bp_pre_thiazide_results_test_9.3.csv", clear 
+import delimited "/Users/jiawei/Downloads/bp_pre_thiazide_9.3.csv", clear 
 
-
-save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/preThiazide_bpavg_frmpython9.2.dta", replace
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/preThiazide_bpavg_frmpython9.3.dta"
 
 sort maskid formdays
 by maskid: egen previsit1BP = max(bp_pre_thiazide_visit_1)
@@ -725,44 +834,40 @@ egen row_mean = rowmean(previsit1BP previsit2BP previsit3BP previsit4BP)
 rename row_mean meanSBPpreThiazide
 rename meanSBPpreThiazide new_first_sbp_avg
 
-
-save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/preThiazide_bpavg_frmpython9.2.dta", replace
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/preThiazide_bpavg_frmpython9.3.dta", replace
 
 * With the above I had transferred python pre-thiazide averaged SBP 
 * Combine this with the FULL cohort... 
 
-use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_9.3.dta"
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_thiazide_9.3 .dta"
 drop _merge
 
 * merge with formdays as part of the criteria as well because the maskid is not unique, but the maskid+formdays combo is unique 
-merge m:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/preThiazide_bpavg_frmpython9.2.dta"
+merge m:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/preThiazide_bpavg_frmpython9.3.dta"
 sort maskid formdays
 
 Output: 
 
     Result                           # of obs.
     -----------------------------------------
-    not matched                       187,541
-        from master                   187,541  (_merge==1)
+    not matched                        32,663
+        from master                    32,663  (_merge==1)
         from using                          0  (_merge==2)
 
-    matched                             6,909  (_merge==3)
+    matched                            47,380  (_merge==3)
     -----------------------------------------
 
 
-
-		
 . distinct maskid if _merge ==3
 
         |        Observations
         |      total   distinct
 --------+----------------------
- maskid |       6909       5252
+ maskid |      47380       4451
 
 
-
-(this 5252 number is different from prior, because I did not set cohort == 1 or cohort2 ==1 for pre-MRA BP calculation. The purpose is to get systolic BP baseline for every one on thiazide and apply the filters afterwards)
-
+(this 4451 number is different from prior, filter out anyone who is not on thiazide- I need that prior obs for baseline BP calculation before 
+they change their status to thiazide-users, to get systolic BP baseline for every one on thiazide and apply the filters afterwards)
 
 * fill up the entire column with the new first SBP avg 
 egen new_first_sbp_avg_filled = min(new_first_sbp_avg) , by (maskid)
@@ -772,72 +877,154 @@ egen new_first_sbp_avg_filled = min(new_first_sbp_avg) , by (maskid)
         |        Observations
         |      total   distinct
 --------+----------------------
- maskid |      76243       5695
+ maskid |      19989       2056
 
-. distinct maskid if thiazide ==1 & new_first_sbp_avg !=.
-
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |       5136       5123
-
-. distinct maskid if thiazide ==1 & new_first_sbp_avg !=. & multiple_same_daystart ==0 
+. 
+. distinct maskid if thiazide ==1 & new_first_sbp_avg_filled !=.
 
         |        Observations
         |      total   distinct
 --------+----------------------
- maskid |       2819       2809
-
-. distinct maskid if thiazide ==1 & new_first_sbp_avg !=. & multiple_same_daystart ==0 & thiazide_occurr
-> ence ==1
-
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |       2814       2806
-
-. distinct maskid if thiazide ==1 & new_first_sbp_avg !=. & multiple_same_daystart ==0 & thiazide_occurr
-> ence ==1 & med_category_prior_1_unequal == 0
-
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |       2716       2710
+ maskid |      19899       2029
 
 
 
+*** who are the individuals with no baseline SBP and why 
+* Missing SBP at baseline occurs when first_thiazide_daysstart falls between two visits. In these cases, the prior visit either has a missing seatsys or occurs more than 60 days before thiazide initiation. Additionally, in the visit where thiazide is first started, formdays is greater than first_thiazide_daysstart, indicating that the SBP recorded belongs to a post-thiazide initiation visit. As this SBP does not reflect the baseline before thiazide initiation, it is excluded from the analysis. This sequence leads to gaps in baseline SBP data for certain patients.
 
 
+* Identify maskid where thiazide == 1 and new_first_sbp_avg_filled is missing
+gen is_missing_sbp = missing(new_first_sbp_avg_filled)
+
+* List maskid with thiazide == 1 and missing new_first_sbp_avg_filled
+list maskid if first_thiazide_occurrence == 1 & is_missing_sbp == 1
+
+* exactly 27 of them here - add 27 to 2029 = 2056 
+		
+	
+       +--------+
+       | maskid |
+       |--------|
+ 1665. | S01958 |
+ 2095. | S02400 |
+10173. | S13017 |
+12496. | S16076 |
+13687. | S17282 |
+       |--------|
+16310. | S20682 |
+19292. | S24421 |
+19614. | S24785 |
+25188. | S32028 |
+27254. | S34382 |
+       |--------|
+30610. | S38430 |
+39286. | S48422 |
+44688. | S55156 |
+45115. | S55837 |
+47417. | S59100 |
+       |--------|
+50443. | S62954 |
+50582. | S63070 |
+54036. | S67108 |
+54857. | S67941 |
+61495. | S75581 |
+       |--------|
+62123. | S76420 |
+65272. | S80615 |
+68465. | S84401 |
+72166. | S89573 |
+76119. | S95131 |
+       |--------|
+77489. | S96932 |
+78824. | S98453 |
+       +--------+
+
+		
+
+. * Check if these individuals have seatsys not missing when thiazide_occurrence == 1
+
+. list maskid seatsys if first_thiazide_occurrence == 1 & is_missing_sbp == 1 & !missing(seatsys)
+
+       +------------------+
+       | maskid   seatsys |
+       |------------------|
+ 1665. | S01958       122 |
+ 2095. | S02400       123 |
+10173. | S13017       143 |
+13687. | S17282       129 |
+16310. | S20682       118 |
+       |------------------|
+19292. | S24421       147 |
+19614. | S24785       133 |
+25188. | S32028       124 |
+27254. | S34382       123 |
+30610. | S38430       134 |
+       |------------------|
+39286. | S48422       143 |
+44688. | S55156        90 |
+45115. | S55837       118 |
+47417. | S59100       135 |
+50443. | S62954       148 |
+       |------------------|
+50582. | S63070       152 |
+54036. | S67108       137 |
+54857. | S67941        95 |
+62123. | S76420       152 |
+65272. | S80615       107 |
+       |------------------|
+68465. | S84401       130 |
+78824. | S98453       127 |
+       +------------------+
 
 
+22 of these individuals have non-missing seatsys when they first started on thiazide. 
 
 
+* create a subset of data to store these maskid with missing baseline SBP 
 
+* Create flags for the conditions
+gen is_missing_sbp = missing(new_first_sbp_avg_filled)
+
+* Identify the maskid that meet the condition
+gen condition_met = (first_thiazide_occurrence == 1 & is_missing_sbp == 1 )
+
+* Create a flag for maskid that meet the condition
+bysort maskid: egen maskid_meets_condition = max(condition_met)
+
+* Generate the subset and save it as a new dataset
+preserve
+keep if maskid_meets_condition == 1
+
+* Keep only the required variables
+keep maskid formdays first_thiazide_daysstart first_thiazide_formdays med_category seatsys
+
+* Save the subset to a new dataset
+save subset_maskid_data_all_obs.dta, replace
+
+* Restore the original dataset
+restore
+
+* I stored the data under "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/subset_maskid_data_all_obs.dta")"
 
 
 
 * The mean days SBP was obtained prior to thiazide initiation
 
 		
-			. summarize mean_day_diff_pre , detail, if cohort2 ==1
-		
-		                      mean_day_diff_pre
-		-------------------------------------------------------------
-		      Percentiles      Smallest
-		 1%            0              0
-		 5%            0              0
-		10%            0              0       Obs               2,703
-		25%            0              0       Sum of Wgt.       2,703
-		
-		50%            1                      Mean           6.865248
-		                        Largest       Std. Dev.      9.547847
-		75%           15             48
-		90%           21             49       Variance       91.16138
-		95%     26.66667             53       Skewness       1.175779
-		99%     30.66667             54       Kurtosis       3.459189
+                      mean_day_diff_pre
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%            0              0
+ 5%            0              0
+10%            0              0       Obs               2,970
+25%            0              0       Sum of Wgt.       2,970
 
-
-
+50%         13.5                      Mean           11.23998
+                        Largest       Std. Dev.       11.0202
+75%           18             58
+90%           27             58       Variance       121.4448
+95%           29             59       Skewness        .650187
+99%           41             60       Kurtosis       2.993742
 
 
 * The "consistent_med" from the pre-thiazide initiation BP data; now we want to calculate the post-thiazide initiation BP
@@ -847,7 +1034,7 @@ drop consistent_med
 * Keep only observations within 90 days of first thiazide start or where first_thiazide_occurrence is 1
 gen diff = formdays - min_thiazide_daystart if thiazide == 1
 keep if diff != . & diff < 91
-keep if diff >= 0
+keep if diff >= 0 & diff !=. 
 
 * Sort the data
 sort maskid formdays 
@@ -856,33 +1043,19 @@ sort maskid formdays
 by maskid: gen consistent_med = (med_category == med_category[1])
 
 * Save the dataset
-save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_w_prethiazideSBP_prepforpython9.2.dta"
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_w_prethiazideSBP_prepforpython9.3.dta"
 
 * Browse and export the data
 browse maskid formdays new_first_sbp_avg_filled min_thiazide_daystart diff seatsys med_category 
 
-export delimited maskid formdays new_first_sbp_avg_filled min_thiazide_daystart diff seatsys med_category consistent_med using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/export_postthiazide_bp_to_python_9.2.csv", replace
+export delimited maskid formdays new_first_sbp_avg_filled min_thiazide_daystart diff seatsys med_category consistent_med using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/export_postthiazide_bp_to_python_9.3", replace
 
 
 
-* an excerpt of the data, can run in excel for visibility 
-maskid	formdays	min_thiazide_daystart	seatsys	med_category	new_first_sbp_avg_filled	diff
-S00007	29	2	124	1002	145	27
-S00007	58	2	117	1002	145	56
-S00010	205	184	118	2	147	21
-S00022	29	1	113	1007		28
-S00022	57	1	115	1007		56
-S00038	20	1	121	1000		19
-S00038	55	1	116	1000		54
-S00046	0	0	126	7	126	0
-S00046	37	0	128	7	126	37
-S00046	65	0	129	1007	126	65
-S00103	0	0	133	1002	133	0
-
-
-* Note that Cohort 2 was created using restricted criteria; I included only individuals on thiazide in this subset of data to maximize the number of ΔSBP values. I will apply additional filters afterward. The medication category at the time thiazide was first initiated is used as the reference for determining consistent_med.
+* The medication category at the time thiazide was first initiated is used as the reference for determining consistent_med.
 * If consistent_med turns to zero, it indicates a change in the medication category from the prior visit.
 * In this case, the SBP value in the row where consistent_med turns zero will still be used because the effect of the medication change will be reflected in the subsequent SBP measurement, not the current one.
+
 
 
 
@@ -984,26 +1157,123 @@ http://localhost:8889/lab/tree/thiazide_BP_diff_by_visit_9.1.ipynb
 
 
 # Import to STATA
-use "/Users/jiawei/Downloads/post_thiazide_BP_avg_file_9.2 (1).dta"
-egen mean_bp_diff = mean(bp_diff), by(maskid)
+use "/Users/jiawei/Downloads/post_thiazide_BP_avg_file_9.3.dta"
+egen mean_bp_diff_thiazide = mean(bp_diff), by(maskid)
 
 
 * an excerpt of the dataset
 
-maskid	formdays	new_first_sbp_avg_filled	min_thiazide_daystart	diff	seatsys	med_category	consistent_med	bp_diff	days_since_thiazide	bp_diff_visit_1	bp_diff_visit_2	bp_diff_visit_3	bp_diff_visit_4	mean_diff_duration	mean_bp_diff
-S00007	29	145	2	27	124	1002	1		27					56	-28
-S00007	58	145	2	56	117	1002	1	-28	56	-28				56	-28
-S00010	205	147	184	21	118	2	1								
-S00022	29		1	28	113	1007	1		28					56	
-S00022	57		1	56	115	1007	1		56					56	
-S00038	20		1	19	121	1000	1		19					54	
-S00038	55		1	54	116	1000	1		54					54	
-S00046	0	126	0	0	126	7	1		0					51	2.5
-S00046	37	126	0	37	128	7	1	2	37	2				51	2.5
-S00046	65	126	0	65	129	1007	0	3	65					51	2.5
-S00103	0	133	0	0	133	1002	1		0					44	-20
-S00103	31	133	0	31	106	1002	1	-27	31	-27				44	-20
-S00103	57	133	0	57	120	1002	1	-13	57		-13			44	-20
+     +------------------------------------------------------------------------------------------+
+  1. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
+     | S00007 |       29 |   27 |     124 |      145 |     1002 |        1 |       . |        . |
+     |------------------------------------------------------------------------------------------|
+     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
+     |           .     |           .     |           .     |          -28     |          56     |
+     +------------------------------------------------------------------------------------------+
+
+     +------------------------------------------------------------------------------------------+
+  2. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
+     | S00007 |       58 |   56 |     117 |      145 |     1002 |        1 |     -28 |      -28 |
+     |------------------------------------------------------------------------------------------|
+     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
+     |           .     |           .     |           .     |          -28     |          56     |
+     +------------------------------------------------------------------------------------------+
+
+     +------------------------------------------------------------------------------------------+
+  3. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
+     | S00010 |      205 |   21 |     118 |      147 |        2 |        1 |       . |        . |
+     |------------------------------------------------------------------------------------------|
+     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
+     |           .     |           .     |           .     |            .     |           .     |
+     +------------------------------------------------------------------------------------------+
+
+     +------------------------------------------------------------------------------------------+
+  4. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
+     | S00109 |       59 |   23 |     103 |    129.5 |     1002 |        1 |       . |        . |
+     |------------------------------------------------------------------------------------------|
+     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
+     |           .     |           .     |           .     |        -43.5     |          58     |
+     +------------------------------------------------------------------------------------------+
+
+     +------------------------------------------------------------------------------------------+
+  5. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
+     | S00109 |       94 |   58 |      86 |    129.5 |     1002 |        1 |   -43.5 |    -43.5 |
+     |------------------------------------------------------------------------------------------|
+     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
+     |           .     |           .     |           .     |        -43.5     |          58     |
+     +------------------------------------------------------------------------------------------+
+
+     +------------------------------------------------------------------------------------------+
+  6. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
+     | S00122 |        0 |    0 |     137 |      137 |     1000 |        1 |       . |        . |
+     |------------------------------------------------------------------------------------------|
+     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
+     |           .     |           .     |           .     |    -1.666667     |          61     |
+     +------------------------------------------------------------------------------------------+
+
+     +------------------------------------------------------------------------------------------+
+  7. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
+     | S00122 |       34 |   34 |     133 |      137 |     1000 |        1 |      -4 |       -4 |
+     |------------------------------------------------------------------------------------------|
+     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
+     |           .     |           .     |           .     |    -1.666667     |          61     |
+     +------------------------------------------------------------------------------------------+
+
+     +------------------------------------------------------------------------------------------+
+  8. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
+     | S00122 |       62 |   62 |     137 |      137 |     1000 |        1 |       0 |        . |
+     |------------------------------------------------------------------------------------------|
+     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
+     |           0     |           .     |           .     |    -1.666667     |          61     |
+     +------------------------------------------------------------------------------------------+
+
+     +------------------------------------------------------------------------------------------+
+  9. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
+     | S00122 |       87 |   87 |     136 |      137 |     1000 |        1 |      -1 |        . |
+     |------------------------------------------------------------------------------------------|
+     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
+     |           .     |          -1     |           .     |    -1.666667     |          61     |
+     +------------------------------------------------------------------------------------------+
+
+     +------------------------------------------------------------------------------------------+
+ 10. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
+     | S00128 |        0 |    0 |     125 |      125 |        0 |        1 |       . |        . |
+     |------------------------------------------------------------------------------------------|
+     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
+     |           .     |           .     |           .     |           -4     |          62     |
+     +------------------------------------------------------------------------------------------+
+
+     +------------------------------------------------------------------------------------------+
+ 11. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
+     | S00128 |       28 |   28 |     140 |      125 |        0 |        1 |       . |        . |
+     |------------------------------------------------------------------------------------------|
+     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
+     |           .     |           .     |           .     |           -4     |          62     |
+     +------------------------------------------------------------------------------------------+
+
+     +------------------------------------------------------------------------------------------+
+ 12. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
+     | S00128 |       62 |   62 |     121 |      125 |        2 |        0 |      -4 |        . |
+     |------------------------------------------------------------------------------------------|
+     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
+     |           .     |           .     |           .     |           -4     |          62     |
+     +------------------------------------------------------------------------------------------+
+
+     +------------------------------------------------------------------------------------------+
+ 13. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
+     | S00193 |      133 |   41 |     111 |      131 |     1014 |        1 |     -20 |      -20 |
+     |------------------------------------------------------------------------------------------|
+     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
+     |           .     |           .     |           .     |          -20     |        64.5     |
+     +------------------------------------------------------------------------------------------+
+
+     +------------------------------------------------------------------------------------------+
+ 14. | maskid | formdays | diff | seatsys | new_fi~d | med_ca~y | consis~d | bp_diff | bp_dif~1 |
+     | S00193 |      180 |   88 |     111 |      131 |     1014 |        1 |     -20 |        . |
+     |------------------------------------------------------------------------------------------|
+     |    bp_dif~2     |    bp_dif~3     |    bp_dif~4     |    mean_bp~e     |    mean_d~n     |
+     |         -20     |           .     |           .     |          -20     |        64.5     |
+     +------------------------------------------------------------------------------------------+
 
 
 Footnote:
