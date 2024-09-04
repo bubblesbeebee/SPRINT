@@ -1331,6 +1331,7 @@ Output:
 
 sort maskid formdays 
 egen mean_bp_diff_thiazide_filled = min(mean_bp_diff_thiazide) , by (maskid)
+egen mean_diff_duration_thiaz_filled = min(mean_diff_duration) , by (maskid)
 
 
 sort maskid formdays
@@ -1354,20 +1355,67 @@ by maskid: gen first_obs_fordeltaBP = (_n == 1)
 			99%           24             70       Kurtosis       4.236693
 
 * okay they are essentially the same
-* note that the duration of days post thiazide is 55.6 day - which is pretty good
 
+
+
+* calculate the mean duration of post thiazide BP 
+		. distinct maskid if mean_bp_diff_thiazide !=.
+		
+		        |        Observations
+		        |      total   distinct
+		--------+----------------------
+		 maskid |       4406       1593
+		
+		
+		. distinct maskid if mean_diff_duration !=.
+		
+		        |        Observations
+		        |      total   distinct
+		--------+----------------------
+		 maskid |       4416       1600
+
+* there are 7 more in the duration than the bp_diff- this is because some maskid have missing 
+"new_first_sbp_avg_filled" from prior filters even before they entered the python loop and 
+by default the mean_diff_duration shows the days_since_thiazide 
+
+* will remove these 7- by limiting mean_diff_duration to only who had mean_bp_diff_mra
+
+
+
+by maskid: gen first_obs_everyone = (_n == 1)
+bysort first_obs_everyone: summarize mean_diff_duration_thiaz_filled, detail, if mean_bp_diff_thiazide_filled !=.
+
+
+-> first_obs_everyone = 1
+
+               mean_diff_duration_thiaz_filled
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%           30             30
+ 5%           33             30
+10%           35             30       Obs               1,593
+25%           47             30       Sum of Wgt.       1,593
+
+50%           55                      Mean           55.38261
+                        Largest       Std. Dev.      14.00253
+75%           63             90
+90%         74.5             90       Variance       196.0709
+95%           83             90       Skewness       .2799531
+99%           90             90       Kurtosis       2.709516
+
+* Now I have exactly 1,593 maskids with a mean duration of post-thiazide SBP recorded on day 55.4
 
 
 * create the FINAL thiazide cohort
 gen thiazide_cohort = .
 replace thiazide_cohort = 1 if mean_bp_diff_thiazide_filled !=. 
 
-. distinct maskid if thiazide_cohort ==1 
-
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |      28359       1593
+	. distinct maskid if thiazide_cohort ==1 
+	
+	        |        Observations
+	        |      total   distinct
+	--------+----------------------
+	 maskid |      28359       1593
 
 
 
