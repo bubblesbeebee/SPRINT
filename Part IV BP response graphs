@@ -1,0 +1,154 @@
+* This is to build a SBP difference over time (within 90 days) 
+* and the relative reduction in BP 
+
+
+
+* Part A: use the exported from python post MRA BP data
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/from python delta BP MRA 9.3.dta"
+
+* generate relative reduction BP 
+
+gen mra_relative_reduction = mra_bp_diff/new_first_sbp_avg_filled*100
+
+* modify the data to avoid confusion later 
+foreach var of varlist formdays new_first_sbp_avg_filled min_mra_daystart diff seatsys med_category consistent_med mra_bp_diff days_since_MRA bp_diff_visit_1 bp_diff_visit_2 bp_diff_visit_3 bp_diff_visit_4 bp_diff_visit_5 mean_diff_duration_mra median_diff_duration min_diff_duration max_diff_duration mean_bp_diff_mra first_obs_mra mra_relative_reduction {
+    label variable `var' "MRA cohort"
+}
+
+rename diff diff_mra
+rename new_first_sbp_avg_filled new_first_sbp_avg_filled_mra
+
+
+* save it as it is 
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/from python delta BP MRA 9.3.dta", replace
+
+
+
+* Part B: do the same for thiazide, then combine with Part A MRA data- and combine with the MRA+thiazide non overlap data
+
+* modify the data to avoid confusion later 
+foreach var of varlist index maskid formdays new_first_sbp_avg_filled min_thiazide_daystart diff seatsys med_category consistent_med bp_diff days_since_thiazide bp_diff_visit_1 bp_diff_visit_2 bp_diff_visit_3 bp_diff_visit_4 bp_diff_visit_5 mean_diff_duration median_diff_duration min_diff_duration max_diff_duration mean_bp_diff_thiazide first_obs {
+    label variable `var' "thiazide cohort"
+}
+rename diff diff_thiazide
+* generate relative reduction BP 
+gen thiazide_relative_reduction = bp_diff/new_first_sbp_avg_filled*100
+rename new_first_sbp_avg_filled new_first_sbpavgfilledthiazide
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/from python delta BP thiazide 9.3.dta", replace
+
+
+* Part C: combine the 2 together
+* I have to first remove the overlaps in thiazide data- 
+
+. use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/from python delta BP thiazide 9.3.dta"
+
+. merge m:1 maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/thiazide_PURE_users_subset9.4.dta"
+
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                           793
+        from master                       793  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                             4,259  (_merge==3)
+    -----------------------------------------
+
+        . distinct maskid if _merge ==3
+        
+                |        Observations
+                |      total   distinct
+        --------+----------------------
+         maskid |       4259       1540
+        
+* I get exactly 1540, this 1540 thiazide users (excluded those who were subset of MRA cohort), and now combined with MRA data from python 
+
+drop _merge
+
+merge m:m maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/from python delta BP MRA 9.3.dta"
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         5,649
+        from master                     4,822  (_merge==1)
+        from using                        827  (_merge==2)
+
+    matched                               254  (_merge==3)
+    -----------------------------------------
+
+    . distinct maskid if _merge ==2
+    
+            |        Observations
+            |      total   distinct
+    --------+----------------------
+     maskid |        827        381
+    
+    . distinct maskid if _merge ==3
+    
+            |        Observations
+            |      total   distinct
+    --------+----------------------
+     maskid |        254         87
+    
+    . drop _merge
+
+
+* These numbers are bigger than the table 1 N = 329 because this N includes everyone who has or has no bp_diff
+
+. merge m:1 maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/MRA_thiazide_nonoverlap_users_subset9.4.dta"
+
+              Result                           # of obs.
+              -----------------------------------------
+              not matched                           794
+                  from master                       794  (_merge==1)
+                  from using                          0  (_merge==2)
+          
+              matched                             5,109  (_merge==3)
+              -----------------------------------------
+          
+          . distinct maskid if _merge == 1
+          
+                  |        Observations
+                  |      total   distinct
+          --------+----------------------
+           maskid |        794        519
+          
+          . distinct maskid if _merge ==3
+          
+                  |        Observations
+                  |      total   distinct
+          --------+----------------------
+           maskid |       5109       1869
+
+* the mra_thiazide_nonoverlap_users_subset has no data on BPs, only the maskid so I have to combine 
+the data this way
+
+. keep if _merge == 3
+(794 observations deleted)
+
+. save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/delta_SBP_MRA+purethiazide_prepforpython for graph9.4.dta"
+
+ list maskid cohort formdays bp_diff thiazide_relative_reduction mra_bp_diff mra_relative_reduction day_of_exposure in 
+> 1/13
+
+     +--------------------------------------------------------------------------------------+
+     | maskid     cohort   formdays   bp_diff   thiazid~n   mra_bp~f   mra_rel~n   day_of~e |
+     |--------------------------------------------------------------------------------------|
+  1. | S00007   thiazide         29         .           .          .           .          2 |
+  2. | S00007   thiazide         58       -28   -19.31034          .           .          2 |
+  3. | S00087        MRA        119         .           .          .           .        119 |
+  4. | S00087        MRA        155         .           .   -2.66667   -1.670148        119 |
+  5. | S00087        MRA        189         .           .          .           .        119 |
+     |--------------------------------------------------------------------------------------|
+  6. | S00087        MRA        206         .           .          .           .        119 |
+  7. | S00109   thiazide         59         .           .          .           .         36 |
+  8. | S00109   thiazide         94     -43.5   -33.59073          .           .         36 |
+  9. | S00122   thiazide          0         .           .          .           .          0 |
+ 10. | S00122   thiazide         34        -4   -2.919708          .           .          0 |
+     |--------------------------------------------------------------------------------------|
+ 11. | S00122   thiazide         62         0           0          .           .          0 |
+ 12. | S00122   thiazide         87        -1    -.729927          .           .          0 |
+ 13. | S00128   thiazide          0         .           .          .           .          0 |
+     +--------------------------------------------------------------------------------------+
+
+. 
