@@ -1036,10 +1036,29 @@ egen mean_bp_diff_mra = mean(bp_diff), by(maskid)
 
 * RENAME bp_diff, there is another bp_diff in the thiazide cohort
 rename bp_diff mra_bp_diff 
-
+rename mean_diff_duration mean_diff_duration_mra 
 
 * an excerpt of the dataset
 
+    +--------------------------------------------------------------------------------------------------------------------------------------------------+
+     | maskid   formdays   new_fi~d   min_mr~t   diff   seatsys   med_ca~y   consis~d   mra_bp~f   bp_dif~1   bp_dif~2   bp_dif~3   mean_b~a   mean_d~n |
+     |--------------------------------------------------------------------------------------------------------------------------------------------------|
+  1. | S00087        119   159.6667        119      0       148       1019          1          .          .          .          .   -2.66667         36 |
+  2. | S00087        155   159.6667        119     36       157       1008          0   -2.66667          .          .          .   -2.66667         36 |
+  3. | S00087        189   159.6667        119     70       129       1008          0          .          .          .          .   -2.66667         36 |
+  4. | S00087        206   159.6667        119     87       101       1008          0          .          .          .          .   -2.66667         36 |
+  5. | S001E5       1079      127.5       1047     32       118       1017          1       -9.5       -9.5          .          .       -8.5         57 |
+     |--------------------------------------------------------------------------------------------------------------------------------------------------|
+  6. | S001E5       1129      127.5       1047     82       120       1017          1       -7.5          .       -7.5          .       -8.5         57 |
+  7. | S00248        185        129        185      0       129       1015          1          .          .          .          .        -13         66 |
+  8. | S00248        209        129        185     24       127       1015          1          .          .          .          .        -13         66 |
+  9. | S00248        237        129        185     52       121       1015          1         -8         -8          .          .        -13         66 |
+ 10. | S00248        265        129        185     80       111       1015          1        -18          .        -18          .        -13         66 |
+     |--------------------------------------------------------------------------------------------------------------------------------------------------|
+ 11. | S01329          0        139          0      0       139       1012          1          .          .          .          .        -13       52.5 |
+ 12. | S01329         42        139          0     42       131       1012          1         -8         -8          .          .        -13       52.5 |
+ 13. | S01329         63        139          0     63       121       1012          1        -18          .        -18          .        -13       52.5 |
+     +--------------------------------------------------------------------------------------------------------------------------------------------------+
 
 
 
@@ -1052,24 +1071,41 @@ For example, if BP measurements were taken on days 36 and 58, the average formda
 
 
 sort maskid formdays
-by maskid: gen first_obs = (_n == 1)
+by maskid: gen first_obs_mra = (_n == 1)
 
-bysort first_ob: summarize mean_diff_duration, detail
-
-
-			
-			. distinct maskid if bp_diff !=.
-			
-			        |        Observations
-			        |      total   distinct
-			--------+----------------------
-			 maskid |       2459       1593
+bysort first_ob_mra: summarize mean_diff_duration_mra, detail
 
 
+-> first_obs_mra = 1
 
-* A total of 1593 out of 2007 BP deltas were calculated, with a mean formdays of 55, which is excellent! 
+                     mean_diff_duration_mra
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%           30             30
+ 5%           32             30
+10%           35             30       Obs                 331
+25%           43             30       Sum of Wgt.         331
+
+50%           56                      Mean           56.67472
+                        Largest       Std. Dev.       16.2589
+75%           68             90
+90%           81             90       Variance       264.3518
+95%           85             90       Skewness       .2407782
+99%           90             90       Kurtosis        2.19293
+
+
+. distinct maskid if mean_bp_diff_mra !=. 
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |        828        329
+
+. 
+
+* A total of 329 out of 468 have BP deltas were calculated, with a mean formdays of 56.7 
 The range of formdays spans from 30 to 90, in line with our criteria. 
-* the number went down from 2007 to 1593 secondarily to the filters in Python 
+* the number went down secondarily to the filters in Python 
 1) BP must be >30 days post thiazide initiation 
 2) the medication list is constant across the visits 
 
@@ -1085,74 +1121,80 @@ merge m:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaW
 drop _merge 
 
 			
-			    Result                           # of obs.
-			    -----------------------------------------
-			    not matched                        74,991
-			        from master                    74,991  (_merge==1)
-			        from using                          0  (_merge==2)
 			
-			    matched                             5,052  (_merge==3)
-			    -----------------------------------------
-			
+		    Result                           # of obs.
+		    -----------------------------------------
+		    not matched                       172,882
+		        from master                   172,882  (_merge==1)
+		        from using                          0  (_merge==2)
+		
+		    matched                             1,028  (_merge==3)
+		    -----------------------------------------
+
 
 
 Output: 
 
 	                
-			. distinct maskid if mean_bp_diff !=. 
+		. distinct maskid if mean_bp_diff !=. 
+		
+		        |        Observations
+		        |      total   distinct
+		--------+----------------------
+		 maskid |        828        329
+		
+		. distinct maskid if mean_bp_diff !=. & MRA ==1
+		
+		        |        Observations
+		        |      total   distinct
+		--------+----------------------
+		 maskid |        828        329
+		
+
+
+
+
+
+* only 329 available for delta BP 
 			
-			        |        Observations
-			        |      total   distinct
-			--------+----------------------
-			 maskid |       4406       1593
-			
-			. distinct maskid if mean_bp_diff !=. & thiazide ==1
-			
-			        |        Observations
-			        |      total   distinct
-			--------+----------------------
-			 maskid |       4406       1593
+			. summarize mean_bp_diff, detail, if MRA ==1
 
-
-
-
-
-* only 1593 available for delta BP 
-
-			
-			. summarize mean_bp_diff, detail, if thiazide ==1
-			
-			                    mean_bp_diff_thiazide
+                     			 mean_bp_diff_mra
 			-------------------------------------------------------------
 			      Percentiles      Smallest
-			 1%          -54            -95
-			 5%          -41            -95
-			10%          -35          -74.5       Obs               4,406
-			25%    -23.66667          -74.5       Sum of Wgt.       4,406
+			 1%          -58            -61
+			 5%          -36            -61
+			10%        -28.5            -61       Obs                 828
+			25%          -20            -61       Sum of Wgt.         828
 			
-			50%       -13.75                      Mean          -14.51581
-			                        Largest       Std. Dev.      15.53865
-			75%         -4.5             35
-			90%            4             70       Variance       241.4497
-			95%            9             70       Skewness      -.1840778
-			99%         21.5             70       Kurtosis       4.228885
+			50%          -11                      Mean          -11.39342
+			                        Largest       Std. Dev.      15.25976
+			75%    -2.166665             31
+			90%            7             31       Variance       232.8604
+			95%           14             31       Skewness      -.2704966
+			99%         28.5             31       Kurtosis       3.944166
+			
+			. 
+
 			
 			. summarize mean_bp_diff, detail
 			
-			                    mean_bp_diff_thiazide
+
+			                      mean_bp_diff_mra
 			-------------------------------------------------------------
 			      Percentiles      Smallest
-			 1%          -54            -95
-			 5%          -41            -95
-			10%          -35          -74.5       Obs               4,406
-			25%    -23.66667          -74.5       Sum of Wgt.       4,406
+			 1%          -58            -61
+			 5%          -36            -61
+			10%        -28.5            -61       Obs                 828
+			25%          -20            -61       Sum of Wgt.         828
 			
-			50%       -13.75                      Mean          -14.51581
-			                        Largest       Std. Dev.      15.53865
-			75%         -4.5             35
-			90%            4             70       Variance       241.4497
-			95%            9             70       Skewness      -.1840778
-			99%         21.5             70       Kurtosis       4.228885
+			50%          -11                      Mean          -11.39342
+			                        Largest       Std. Dev.      15.25976
+			75%    -2.166665             31
+			90%            7             31       Variance       232.8604
+			95%           14             31       Skewness      -.2704966
+			99%         28.5             31       Kurtosis       3.944166
+
 
 * ? The mean SBP is averaged across observations or individuals?
 * to solve this assign 1 number to each maskid and they all have only 1 observation with 1 delta BSP 
@@ -1163,25 +1205,56 @@ egen mean_bp_diff_mra_filled = min(mean_bp_diff_mra) , by (maskid)
 
 
 sort maskid formdays
-by maskid: gen first_obs_fordeltaBP = (_n == 1)
+by maskid: gen first_obs_mra_fordeltaBP = (_n == 1)
 
-. summarize mean_bp_diff_mra_filled, detail, if first_obs_fordeltaBP ==1
-
-		
-* okay they are essentially the same
-* note that the duration of days post mra is 55.6 day - which is pretty good
+. summarize mean_bp_diff_mra_filled, detail, if first_obs_mra_fordeltaBP ==1
 
 
+                   mean_bp_diff_mra_filled
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%        -53.5            -61
+ 5%          -35            -61
+10%        -28.5            -58       Obs                 329
+25%        -19.5          -53.5       Sum of Wgt.         329
+
+50%          -11                      Mean           -10.8232
+                        Largest       Std. Dev.      14.97358
+75%     -1.33333             26
+90%            8           28.5       Variance       224.2082
+95%           14       28.83334       Skewness      -.1886892
+99%           26             31       Kurtosis       3.772993
+	
+* okay they are different- -11.39342 vs -10.8232
+* note that the duration of days post mra is 56.6 day - which is pretty good
+
+. summarize mean_diff_duration_mra_filled, detail, if first_obs_mra_fordeltaBP ==1
+
+                mean_diff_duration_mra_filled
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%           30             30
+ 5%           32             30
+10%           35             30       Obs                 331
+25%           43             30       Sum of Wgt.         331
+
+50%           56                      Mean           56.67472
+                        Largest       Std. Dev.       16.2589
+75%           68             90
+90%           81             90       Variance       264.3518
+95%           85             90       Skewness       .2407782
+99%           90             90       Kurtosis        2.19293
+
+
+* As to why 331 has 2 more than the 329 who has delta BP- i dont know
 
 * create the FINAL mra cohort
 gen mra_cohort = .
 replace mra_cohort = 1 if mean_bp_diff_mra_filled !=. 
 
-. distinct maskid if mra_cohort ==1 
-
-        |        Observations
-        |      total   distinct
---------+----------------------
- maskid |      28359       1593
-
-
+	. distinct maskid if mra_cohort ==1 
+	
+	        |        Observations
+	        |      total   distinct
+	--------+----------------------
+	 maskid |       7654        329
