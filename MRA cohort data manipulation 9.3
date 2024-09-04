@@ -1246,9 +1246,50 @@ by maskid: gen first_obs_mra_fordeltaBP = (_n == 1)
 99%           90             90       Kurtosis        2.19293
 
 
-* As to why 331 has 2 more than the 329 who has delta BP- i dont know
+* As to why 331 has 2 more than the 329 who has delta BP (s17412 and S84595)
+upon inspection- it is because the new_first_sbp_avg_filled is missing, bp_diff is appropriately not calculated, but
+the mean_diff_duration by default is showing the days from MRA. 
+* will remove these 2- by limiting mean_diff_duration to only who had mean_bp_diff_mra
+
+
+
+* an excerpt of the dataset: 
+maskid	new_first_sbp_avg_filled	min_mra_daystart	diff	seatsys	mean_diff_duration	mean_bp_diff_mra	detective
+S17412		1019	59	131	59		1
+S84595		1269	38	139	38		1
+S17412		1019	24	124	59		1
+S51277	142	210	47		70	-20	
+S34527	130	666	62	132	62	2	
+S01329	139	0	42	131	52.5	-13	
+S67462	140	586	0	140	37	-26	
+
+
+
+by maskid: gen first_obs_everyone = (_n == 1)
+bysort first_obs_everyone: summarize mean_diff_duration_mra_filled, detail, if mean_bp_diff_mra_filled !=.
+
+-> first_obs_everyone = 1
+
+                mean_diff_duration_mra_filled
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%           30             30
+ 5%           32             30
+10%           35             30       Obs                 329
+25%           43             30       Sum of Wgt.         329
+
+50%           56                      Mean           56.72442
+                        Largest       Std. Dev.      16.27518
+75%           68             90
+90%           82             90       Variance       264.8815
+95%           85             90       Skewness       .2369521
+99%           90             90       Kurtosis        2.18927
+
+
+* Now I have exactly 329 - with mean duration of 56.7 days
 
 * create the FINAL mra cohort
+
 gen mra_cohort = .
 replace mra_cohort = 1 if mean_bp_diff_mra_filled !=. 
 
