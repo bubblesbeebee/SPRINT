@@ -1,0 +1,118 @@
+* Aim 1: Create table and populate age, gender, etc
+
+
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/keyvar_incl_excl(w race, age, tx arm) .dta"
+(KEYVAR)
+
+            . distinct maskid 
+            
+                    |        Observations
+                    |      total   distinct
+            --------+----------------------
+             maskid |       9361       9361
+
+. merge m:m maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/MRA_thiazide_nonoverlap_users_subset9.4.dta"
+
+
+              Result                           # of obs.
+              -----------------------------------------
+              not matched                         7,492
+                  from master                     7,492  (_merge==1)
+                  from using                          0  (_merge==2)
+          
+              matched                             1,869  (_merge==3)
+              -----------------------------------------
+
+gen updated_age =.
+replace updated_age = RZ_AGE + 1 if mra_daystart > 365 & mra_daystart != . & thiazide_daystart == .
+replace updated_age = RZ_AGE + 2 if mra_daystart > 730 & mra_daystart != . & thiazide_daystart == .
+replace updated_age = RZ_AGE + 3 if mra_daystart > 1095 & mra_daystart != . & thiazide_daystart == .
+replace updated_age = RZ_AGE + 4 if mra_daystart > 1460 & mra_daystart != . & thiazide_daystart == .
+
+
+
+gen cohort =""
+replace cohort = "MRA" if mra_user != "" & thiazide_user == ""
+replace cohort = "thiazide" if thiazide_user != "" & mra_user == ""
+
+
+bysort cohort: summarize updated_age CVDPOINTS CKD SBPAVG DBPAVG GFRESTIMATE SERUMCREAT TOTALCHOLEST CALCSCORE400 NUMBEROFDRUGS
+
+-> cohort = MRA
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+ updated_age |        329    67.75684     9.31733         50         90
+   CVDPOINTS |        329    17.56535    2.552405         11         26
+         CKD |          0
+      SBPAVG |        329    147.7021    11.18699        130        180
+      DBPAVG |        329     81.2462    12.35095         50        126
+-------------+---------------------------------------------------------
+ GFRESTIMATE |        329    71.42131    21.52728         23        143
+  SERUMCREAT |          0
+TOTALCHOLEST |          0
+CALCSCORE400 |        329           0           0          0          0
+NUMBEROFDR~S |        329     2.25228    .9970395          0          4
+
+-------------------------------------------------------------------------------------------------------------
+-> cohort = thiazide
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+ updated_age |      1,540    67.54221    9.442423         50         90
+   CVDPOINTS |      1,539    17.38986    2.408276          9         26
+         CKD |          0
+      SBPAVG |      1,540    145.7994    11.35461        130        180
+      DBPAVG |      1,540    81.27013     11.4356         47        116
+-------------+---------------------------------------------------------
+ GFRESTIMATE |      1,540     74.2865    20.82309         20        193
+  SERUMCREAT |          0
+TOTALCHOLEST |          0
+CALCSCORE400 |      1,540    .0012987    .0360258          0          1
+NUMBEROFDR~S |      1,540    1.508442     .963563          0          4
+
+
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/mra+thiazide+keyvar_incl_excl(w race, age, tx arm) 9.4.dta"
+
+****** RETURN LATER FOR CATEGORICAL *********
+
+
+
+
+
+* Aim 2: Identify diuretic uses over time and BP diff 
+* I need delta BP data, visit date, lastmednbr, labs data
+* combine the mra+thiazide non overlap data with masterdata
+
+
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/MRA_thiazide_nonoverlap_users_subset9.4.dta"
+gen cohort =""
+replace cohort = "MRA" if mra_user != "" & thiazide_user == ""
+replace cohort = "thiazide" if thiazide_user != "" & mra_user == ""
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/MRA_thiazide_nonoverlap_users_subset9.4.dta", replace
+
+clear
+
+* I think I need the bp_diff, (and somepoint down the road I need the diastolic as well?... 
+
+* Extract the BP value from thiazide_user_info
+gen thiazide_delta_SBP_str = substr(thiazide_user_info, strpos(thiazide_user_info, "BP: ") + 4, .)
+
+* Extract the BP value from thiazide_user_info
+gen thiazide_delta_SBP_str = substr(thiazide_user_info, strpos(thiazide_user_info, "BP: ") + 4, .)
+
+destring thiazide_delta_SBP_str, generate(thiazide_delta_SBP)
+
+gen mra_delta_SBP_str = substr(mra_user_info, strpos(mra_user_info, "BP: ") + 4, .)
+
+destring mra_delta_SBP_str, generate(mra_delta_SBP)
+
+gen day_of_exposure = . 
+replace day_of_exposure = mra_daystart if thiazide_daystart ==. 
+replace day_of_exposure = thiazide_daystart if mra_daystart ==. 
+
+export delimited maskid formdays day_of_exposure thiazide_daystart thiazide_user_info thiazide_pure mra_daystart mra_user_info cohort thiazide_delta_SBP mra_delta_SBP using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/day_of_exposure_delta_BP_for_python 9.4", replace
+
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/MRA_thiazide_nonoverlap_users_subset9.4.dta", replace
+
+
