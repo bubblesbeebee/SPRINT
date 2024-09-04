@@ -131,3 +131,81 @@ Python output for KM
 
 * The Log-Rank test suggests that there is no statistically significant difference in survival between the MRA and thiazide groups, as the p-value is 0.1339. 
 
+
+
+
+* STATA code for survival analysis 
+
+sts graph, by(cohort)
+
+         failure _d:  event == 1
+   analysis time _t:  time_to_event
+
+. stsum, by(cohort)
+
+         failure _d:  event == 1
+   analysis time _t:  time_to_event
+
+         |               Incidence     Number of   |------ Survival time -----|
+  cohort | Time at risk       rate      subjects        25%       50%       75%
+---------+---------------------------------------------------------------------
+     MRA |       11,178   .0016998            19         89       476      1049
+thiazide |       87,929   .0013079           115        314       774      1158
+---------+---------------------------------------------------------------------
+   Total |       99,107   .0013521           134        260       748      1154
+
+. by cohort, sort : stdescribe
+
+----------------------------------------------------------------------------------------------------------
+-> cohort = MRA
+
+         failure _d:  event == 1
+   analysis time _t:  time_to_event
+
+                                   |-------------- per subject --------------|
+Category                   total        mean         min     median        max
+------------------------------------------------------------------------------
+no. of subjects               19   
+no. of records                19           1           1          1          1
+
+(first) entry time                         0           0          0          0
+(final) exit time                   588.3158          37        476       1500
+
+subjects with gap              0   
+time on gap if gap             0   
+time at risk               11178    588.3158          37        476       1500
+
+failures                      19           1           1          1          1
+------------------------------------------------------------------------------
+
+----------------------------------------------------------------------------------------------------------
+-> cohort = thiazide
+
+         failure _d:  event == 1
+   analysis time _t:  time_to_event
+
+                                   |-------------- per subject --------------|
+Category                   total        mean         min     median        max
+------------------------------------------------------------------------------
+no. of subjects              115   
+no. of records               115           1           1          1          1
+
+(first) entry time                         0           0          0          0
+(final) exit time                      764.6           1        774       1710
+
+subjects with gap              0   
+time on gap if gap             0   
+time at risk               87929       764.6           1        774       1710
+
+failures                     115           1           1          1          1
+------------------------------------------------------------------------------
+
+. 
+
+
+sts graph if age_group == 1, by(group)
+
+
+
+
+
