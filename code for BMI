@@ -1,0 +1,42 @@
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/MRA_thiazide_nonoverlap_users_subset9.4.dta"
+rename maskid MASKID
+merge 1:m MASKID using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/weight compiled .dta"
+keep if _merge ==3
+gen diff_formsday = FORMDAYS - thiazide_daystart if thiazide_daystart!=. & mra_daystart ==.
+replace diff_formsday = FORMDAYS - mra_daystart if thiazide_daystart ==. & mra_daystart !=. 
+* Sort the data by maskid and the time variable (assuming FORMIDAYS as time variable)
+sort MASKID FORMDAYS
+* Replace missing weight with the prior observation's weight within each maskid
+bysort MASKID (FORMDAYS): replace WEIGHT = WEIGHT[_n-1] if missing(WEIGHT)
+* Replace any remaining missing weight with the next observation's weight within each maskid
+bysort MASKID (FORMDAYS): replace WEIGHT = WEIGHT[_n+1] if missing(WEIGHT)
+sort MASKID FORMDAYS
+* Step 1: Generate a new variable that captures the absolute value of diff_formsday_MRAstartday
+gen abs_diff = abs(diff_formsday)
+* Step 2: Sort by maskid and abs_diff to get the row with the smallest absolute difference first
+sort MASKID abs_diff
+* Step 3: Keep only the first observation for each maskid (closest to zero)
+by MASKID: keep if _n == 1
+*I have 11 missing weights- will take the one prior 
+gen bmi = (WEIGHT / (HEIGHT^2)) * 703
+rename MASKID maskid 
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/BMI of MRA_thiazide_nonoverlap_users_subset9.4.dta"
+
+
+  . use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/BMI of MRA_thiazide_nonoverlap_u
+> sers_subset9.4.dta"
+
+. drop _merge
+
+. merge 1:1 maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/mra+thiazide+keyvar_incl_excl(w race, age, tx arm) 9.4.dta"
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             1,869  (_merge==3)
+    -----------------------------------------
+
+. save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/bmi+keyvar_MRA_thiazide_nonover
+> lap9.4.dta"
+file /Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/bmi+keyvar_MRA_thiazide_nonoverlap
+> 9.4.dta saved
