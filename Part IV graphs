@@ -1,0 +1,20 @@
+* This is to build a SBP difference over time (within 90 days) 
+* and the relative reduction in BP 
+
+
+
+
+
+
+* Save the current dataset as a temporary file before creating the subset
+tempfile original_data
+save `original_data'
+
+* Keep only the desired variables in the dataset
+keep thiazide_user_info maskid formdays thiazide_daystart
+
+* Save the subset as a new dataset
+save thiazide_users_subset.dta
+
+* Return to the original dataset
+use `original_data', clear
