@@ -1,6 +1,6 @@
 # Data Dictionary for Newly Created Variables
 
-# Thiazide-related Variables Data Dictionary
+# Mini Data Dictionary
 
 | Variable Name | Description | Data Type | Possible Values |
 |---------------|-------------|-----------|-----------------|
@@ -20,7 +20,7 @@ Notes:
 4. A value of 1 for multiple_thiazide_starts indicates that the patient had at least one more thiazide prescription after their first one.
 5. concurrent_start and thiazide_solo_start are mutually exclusive; if one is 1, the other must be 0.
 
-# Data Dictionary for BP Diff Analysis
+# Data Dictionary for delta BP Analysis
 
 | Variable Name | Description | Data Type | Possible Values |
 |---------------|-------------|-----------|-----------------|
