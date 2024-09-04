@@ -28,4 +28,3 @@ You can use a variety of colors to customize your plots. Here are some other col
 - **Violin Colors**: `['#4FC3F7', '#26A69A']`  (Light Blue and Turquoise)
 - **Box Colors**: `['#0288D1', '#00796B']`     (Ocean Blue and Deep Teal)
 
-You can mix and match these colors based on your preferences or the theme of your visualization. Just replace the `violin_colors` and `box_colors` in your code with any of the color schemes above.
