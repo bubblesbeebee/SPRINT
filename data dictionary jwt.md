@@ -44,8 +44,8 @@ Notes:
 | max_diff_duration | Maximum number of days since MRA for valid BP measurements | Integer | > 30 |
 
 Notes:
-1. All BP measurements are in mmHg (millimeters of mercury).
+1. All BP measurements are in mmHg 
 2. 'Valid' BP measurements refer to those taken at least 30 days after MRA start and during periods of consistent medication.
 3. bp_diff_visit_1 through bp_diff_visit_5 may be NaN if fewer than 5 valid visits occurred.
 4. avg_bp_diff and the diff_duration statistics are only calculated for patients with at least one valid bp_diff value.
-5. The diff_duration statistics are based on the same set of measurements used to calculate avg_bp_diff.
+5. The diff_duration statistics are based on the same set of measurements used to calculate avg_bp_diff
