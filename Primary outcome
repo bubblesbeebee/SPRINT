@@ -1,0 +1,41 @@
+# first use the data w thiazide (excluded those who also in MRA) & MRA- repleted with 
+key variables including age, CKD, gender, race, BMI and BP difference over time. 
+
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/bmi+keyvar_MRA_thiazide_nonoverlap9.4.dta"
+. merge 1:m maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/primaryall.dta"
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         2,666
+        from master                     1,762  (_merge==1)
+        from using                        904  (_merge==2)
+
+    matched                               142  (_merge==3)
+    -----------------------------------------
+
+. tab cohort if _merge ==3
+
+     cohort |      Freq.     Percent        Cum.
+------------+-----------------------------------
+        MRA |         21       14.79       14.79
+   thiazide |        121       85.21      100.00
+------------+-----------------------------------
+      Total |        142      100.00
+
+# in this file for all primary outcomes, only 21 MRAs users reached primary endpoint
+
+. gen time_to_event = .
+
+. replace time_to_event = eventdays - thiazide_daystart if cohort == "thiazide"
+
+. replace time_to_event = eventdays - mra_daystart if cohort == "MRA"
+
+. gen event = 1 if eventdays!=.
+
+gen group = . 
+replace group = 1 if cohort == "thiazide"
+replace group = 2 if cohort == "MRA"
+
+list maskid cohort group mra_daystart thiazide_daystart event eventdays in 1/10
+
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/primaryoutcome9.4.dta", replace
