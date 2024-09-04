@@ -1,0 +1,151 @@
+# Aim 1: 
+
+# Label as Thiazide
+foreach var of varlist thiazide_daystart_same_count multiple_same_daystart med_oxin med_triam med_olol med_ipine_azem med_mra med_fur_bum_tors med_pril_artan med_hydral_azine med_pril_artan med_idine_clon med_minoxi med_guanfacine med_category prior_med_category first_med_category second_med_category third_med_category fourth_med_category prior_med_category_filled first_med_category_filled second_med_category_filled third_med_category_filled fourth_med_category_filled med_category_diff_2_1 med_category_diff_3_1 med_category_diff_3_2 med_category_diff_prior_1 med_category_prior_1_unequal med_category_2_1_unequal med_category_3_1_unequal med_category_3_2_unequal first_SBP first_SBP_filled second_SBP second_SBP_filled third_SBP third_SBP_filled fourth_SBP fourth_SBP_filled have_SBP_baseline prior_SBP thiazide_daystart_first visit_diff_prior_Thiazide visit_diff_prior_and1_eligible eligible_missing_first_SBP new_first_sbp index new_first_sbp_avg_filled diff consistent_med bp_diff days_since_thiazide bp_diff_visit_1 bp_diff_visit_2 bp_diff_visit_3 bp_diff_visit_4 bp_diff_visit_5 mean_diff_duration median_diff_duration min_diff_duration max_diff_duration mean_bp_diff_thiazide first_obs mean_bp_diff_thiazide_filled first_obs_fordeltaBP thiazide_cohort mean_diff_duration_thiaz_filled first_obs_everyone {
+    label variable `var' "thiazide cohort"
+}
+
+
+foreach var of varlist thiazide_user_info fourth_onThiazide_filled fourth_onThiazide third_onThiazide_filled third_onThiazide second_onThiazide_filled first_onThiazide_filled prior_onThiazide_filled second_onThiazide first_onThiazide prior_onThiazide thiazide_occurrence min_thiazide_daystart first_thiazide_daysstart_filled first_thiazide_daysstart thiazide_daystart first_thiazide_formdays_filled first_thiazide_formdays first_thiazide_occurrence any_thiazide thiazide {
+    label variable `var' "thiazide cohort"
+}
+
+
+* create a list of thiazide user
+gen dummy = (first_thiazide_occurrence == 1 & thiazide_cohort == 1)
+
+* Create a new variable to store the combined information
+gen thiazide_user_info = ""
+replace thiazide_user_info = "maskid: " + maskid + ", formdays: " + string(formdays) + ", daystart: " + string(first_thiazide_daysstart, "%9.0f") + ", BP: " + string(mean_bp_diff_thiazide_filled, "%9.2f") if dummy == 1
+drop dummy
+
+
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/final_masterdata_thiazide_9.3 .dta", replace
+
+
+
+* Save the current dataset as a temporary file before creating the subset
+tempfile original_data
+save `original_data'
+
+* Keep only the desired variables in the dataset
+keep thiazide_user_info maskid formdays thiazide_daystart
+
+* Save the subset as a new dataset
+save thiazide_users_subset.dta
+
+* Return to the original dataset
+use `original_data', clear
+
+
+
+* Inspect the subset
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/thiazide_users_subset.dta"
+
+drop if thiazide_user_info ==""
+
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/thiazide_users_maskid_subset9.4.dta"
+
+
+
+
+
+# Do the same for MRA
+
+foreach var of varlist MRA flag_mra1 flag_mra2 flag_mra3 flag_mra4 flag_mra5 flag_mra6 flag_mra7 flag_mra8 flag_mra9 flag_mra10 any_mra first_mra_occurrence first_mra_formdays first_mra_formdays_filled mra_daystart first_mra_daysstart first_mra_daysstart_filled min_mra_daystart mra_daystart_same_count multiple_same_daystart mra_occurrence prior_onMRA first_onMRA prior_onMRA_filled first_onMRA_filled third_onMRA third_onMRA_filled fourth_onMRA fourth_onMRA_filled second_onMRA second_onMRA_filled med_oxin med_triam med_olol med_ipine_azem med_thia_chlo_hct med_fur_bum_tors med_hydral_azine med_pril_artan med_idine_clon med_minoxi med_guanfacine med_category prior_med_category first_med_category second_med_category third_med_category fourth_med_category prior_med_category_filled first_med_category_filled second_med_category_filled third_med_category_filled fourth_med_category_filled med_category_diff_2_1 med_category_diff_3_1 med_category_diff_3_2 med_category_diff_prior_1 med_category_prior_1_unequal med_category_2_1_unequal med_category_3_1_unequal med_category_3_2_unequal first_SBP first_SBP_filled second_SBP second_SBP_filled third_SBP third_SBP_filled fourth_SBP fourth_SBP_filled have_SBP_baseline prior_SBP mra_daystart_first visit_diff_prior_MRA visit_diff_prior_and1_eligible eligible_missing_first_SBP new_first_sbp index new_first_sbp_avg_filled diff consistent_med mra_bp_diff days_since_MRA bp_diff_visit_1 bp_diff_visit_2 bp_diff_visit_3 bp_diff_visit_4 bp_diff_visit_5 mean_diff_duration_mra median_diff_duration min_diff_duration max_diff_duration mean_bp_diff_mra first_obs_mra mean_bp_diff_mra_filled first_obs_mra_fordeltaBP mean_diff_duration_mra_filled mra_cohort first_obs_everyone {
+    label variable `var' "MRA cohort"
+}
+
+
+* Save the current dataset as a temporary file before creating the subset
+tempfile original_data
+save `original_data'
+
+* Keep only the desired variables in the dataset
+keep mra_user_info maskid formdays mra_daystart
+
+* Save the subset as a new dataset
+save mra_users_subset.dta
+
+* Return to the original dataset
+use `original_data', clear
+
+* open subset
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/mra_users_subset.dta"
+
+drop if mra_user_info == ""
+
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/mra_users_maskid_subset9.3.dta"
+
+
+
+
+* merge the thiazide user dataset with an MRA user dataset, 
+ensuring that the maskids are correctly matched while retaining their respective formdays
+
+* Merge with the thiazide user dataset
+
+. merge m:m maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/thiazide_users_maskid_subset9.4.dta"
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         1,816
+        from master                       276  (_merge==1)
+        from using                      1,540  (_merge==2)
+
+    matched                                53  (_merge==3)
+    -----------------------------------------
+
+
+
+**** 53 of the thiazide users also belongs to the MRA users cohort. 
+
+* Keep all non-matches observations as pure thiazide users
+gen thiazide_pure ==. 
+replace thiazide_pure == 1 if _merge == 2
+
+* Save the current dataset as a temporary file before creating the subset
+tempfile original_data
+save `original_data'
+
+* Keep only the desired variables in the dataset
+keep thiazide_user_info maskid formdays thiazide_daystart thiazide_pure 
+
+* Save the subset as a new dataset
+save thiazide_pure_users_subset.dta
+
+* Return to the original dataset
+use `original_data', clear
+
+
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/mra+thiazide+overlaps 9.4.dta"
+
+* open subset
+
+
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/thiazide_pure_users_subset.dta"
+
+tab thiazide_pure
+keep if thiazide_pure ==1
+
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/thiazide_PURE_users_subset9.4.dta"
+
+merge m:m maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/mra_users_maskid_subset9.3.dta"
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         1,869
+        from master                     1,540  (_merge==1)
+        from using                        329  (_merge==2)
+
+    matched                                 0  (_merge==3)
+    -----------------------------------------
+
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/MRA_thiazide_nonoverlap_users_subset9.4.dta"
+drop _merge
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/MRA_thiazide_nonoverlap_users_subset9.4.dta", replace
+
+
+
+
+
