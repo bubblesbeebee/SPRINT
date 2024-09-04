@@ -1,36 +1,24 @@
 # Data Dictionary for Newly Created Variables
 
-1. flag_thiazide1 to flag_thiazide10
-   - Type: Binary (0/1)
-   - Description: Indicates presence of thiazide in each medication column
+# Thiazide-related Variables Data Dictionary
 
-2. any_thiazide
-   - Type: Binary (0/1)
-   - Description: Indicates presence of any thiazide medication in the current row
+| Variable Name | Description | Data Type | Possible Values |
+|---------------|-------------|-----------|-----------------|
+| flag_thiazide1 to flag_thiazide10 | Indicates presence of thiazide in each medication column | Binary | 0 (absent), 1 (present) |
+| any_thiazide | Indicates presence of any thiazide medication in the current row | Binary | 0 (absent), 1 (present) |
+| first_thiazide_occurrence | Marks the first occurrence of thiazide for each patient | Binary | 0 (not first), 1 (first) |
+| first_thiazide_formdays | Number of days post-randomization when thiazide was first prescribed | Integer | ≥ 0 |
+| first_thiazide_daysstart | Start date of first thiazide prescription relative to visit date | Integer | Any integer |
+| multiple_thiazide_starts | Indicates subsequent thiazide prescriptions after the first occurrence | Binary | 0 (no), 1 (yes) |
+| concurrent_start | Indicates if other medications were started concurrently with first thiazide | Binary | 0 (no), 1 (yes) |
+| thiazide_solo_start | Indicates if thiazide was started without concurrent medications | Binary | 0 (no), 1 (yes) |
 
-3. first_thiazide_occurrence
-   - Type: Binary (0/1)
-   - Description: Marks the first occurrence of thiazide for each patient
-
-4. first_thiazide_formdays
-   - Type: Numeric
-   - Description: Number of days post-randomization when thiazide was first prescribed
-
-5. first_thiazide_daysstart
-   - Type: Numeric
-   - Description: Start date of first thiazide prescription relative to visit date
-
-6. multiple_thiazide_starts
-   - Type: Binary (0/1)
-   - Description: Indicates subsequent thiazide prescriptions after the first occurrence
-
-7. concurrent_start
-   - Type: Binary (0/1)
-   - Description: Indicates if other medications were started concurrently with first thiazide
-
-8. thiazide_solo_start
-   - Type: Binary (0/1)
-   - Description: Indicates if thiazide was started without concurrent medications
+Notes:
+1. flag_thiazide1 to flag_thiazide10 represent up to 10 different medication columns in the dataset.
+2. 'Binary' variables are coded as 0 or 1, where 0 typically indicates 'No' or 'Absent', and 1 indicates 'Yes' or 'Present'.
+3. first_thiazide_formdays and first_thiazide_daysstart are relative to some baseline date (e.g., randomization date or study start date).
+4. A value of 1 for multiple_thiazide_starts indicates that the patient had at least one more thiazide prescription after their first one.
+5. concurrent_start and thiazide_solo_start are mutually exclusive; if one is 1, the other must be 0.
 
 # Data Dictionary for BP Diff Analysis
 
