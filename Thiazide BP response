@@ -1,0 +1,127 @@
+* Thiazide delta SBP analysis
+
+1) Mixed effect regresison model 
+
+
+. mixed thiazide_delta_SBP bmi RANDASSIGN updated_age GENDER race_black SUB_CKD CVDHISTORY
+
+Mixed-effects ML regression                     Number of obs     =      1,558
+
+                                                Wald chi2(7)      =      32.30
+Log likelihood = -6475.0607                     Prob > chi2       =     0.0000
+
+------------------------------------------------------------------------------------
+thiazide_delta_SBP |      Coef.   Std. Err.      z    P>|z|     [95% Conf. Interval]
+-------------------+----------------------------------------------------------------
+               bmi |   .0683197   .0741049     0.92   0.357    -.0769233    .2135626
+        RANDASSIGN |  -.3344048   .8012157    -0.42   0.676    -1.904759    1.235949
+       updated_age |  -.0889807   .0460706    -1.93   0.053    -.1792775    .0013161
+            GENDER |   2.244757     .86741     2.59   0.010     .5446647    3.944849
+        race_black |  -.8134353   .8855967    -0.92   0.358    -2.549173    .9223024
+           SUB_CKD |   2.686695   .9874021     2.72   0.007     .7514223    4.621967
+        CVDHISTORY |  -4.233909   1.062899    -3.98   0.000    -6.317152   -2.150666
+             _cons |  -13.81907   4.675373    -2.96   0.003    -22.98264   -4.655512
+------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------
+  Random-effects Parameters  |   Estimate   Std. Err.     [95% Conf. Interval]
+-----------------------------+------------------------------------------------
+               var(Residual) |   238.4451   8.543184      222.2752    255.7914
+------------------------------------------------------------------------------
+
+
+* Explanation: 
+Wald chi2(7) = 32.30, Prob > chi2 = 0.0000 indicates that the model as a whole is statistically significant.
+
+
+* Interpretation: 
+For each year increase in age, there's a tendency for a slight decrease in thiazide-associated SBP change.
+
+Being of a female is associated with a 2.24 mmHg higher thiazide-associated SBP change.
+
+Having CKD is associated with a 2.69 mmHg higher thiazide-associated SBP change.
+
+Having a history of CVD is associated with a 4.23 mmHg lower thiazide-associated SBP change.
+
+
+* Random Effects:
+* Random effects account for variability that's associated with different levels or groups in the data
+
+The variance of the residual is 238.4451, which represents the unexplained variability in the model
+this variance is in (mmHg)2
+The square root of this value about 15.44 mmHg = the residual standard deviation
+
+This residual variance represents the variability in blood pressure changes that isn't explained by the predictors in the data
+there's still considerable unexplained variation in how individuals respond to thiazide diuretics
+
+
+A large residual variance might suggest that there are 
+The subsequent analysis GLM shows an R-squared value of 0.0103, indicating that the predictors explain only about 1% of the variance in blood pressure response. 
+This aligns with the large residual variance in the mixed model, suggesting that both models indicate other important factors influencing blood pressure response to thiazides that aren't included in the model.
+
+It could also indicate high individual variability in response to the medication that isn't fully captured 
+
+* In summary, this model suggests that female + CKD + CVH history are significant predictors 
+Age is borderline significant. 
+
+
+2) Generalized Linear Regression 
+
+. regress thiazide_delta_SBP race_black updated_age GENDER SUB_CKD RANDASSIGN bmi 
+
+      Source |       SS           df       MS      Number of obs   =     1,558
+-------------+----------------------------------   F(6, 1551)      =      2.70
+       Model |  3918.48463         6  653.080771   Prob > F        =    0.0131
+    Residual |  375280.987     1,551  241.960662   R-squared       =    0.0103
+-------------+----------------------------------   Adj R-squared   =    0.0065
+       Total |  379199.471     1,557   243.54494   Root MSE        =    15.555
+
+------------------------------------------------------------------------------
+thiazide_d~P |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+  race_black |  -.7571994   .8919879    -0.85   0.396    -2.506829    .9924301
+ updated_age |  -.1016757   .0462978    -2.20   0.028    -.1924887   -.0108627
+      GENDER |   1.936076    .870287     2.22   0.026     .2290126    3.643139
+     SUB_CKD |   2.479375   .9932716     2.50   0.013     .5310779    4.427672
+  RANDASSIGN |  -.4786696   .8062755    -0.59   0.553    -2.060175    1.102836
+         bmi |   .0675645   .0746489     0.91   0.366     -.078859    .2139881
+       _cons |  -13.00321   4.705191    -2.76   0.006    -22.23241   -3.773999
+------------------------------------------------------------------------------
+
+
+* The GLM shows similar significant predictors to the mixed-effects model: updated_age, GENDER, and SUB_CKD.
+* The coefficients and p-values are quite similar between the two models.
+* The GLM has an R-squared of 0.0103, indicating that it explains about 1.03% of the variance in the outcome.
+* The blood pressure measure is already averaged, I am not analyzing with repeated measures.
+* both models (GLM / mixed-effects) yield similar results - the added complexity of the mixed-effects model isn't providing substantial additional insights.
+
+* BUT the low R-squared value suggests that neither model is explaining much of the variance in blood pressure reduction. 
+      might want to consider if there are other important predictors
+
+
+*** What does the _cons mean?
+It means the predicted value of the dependent variable when all independent variables in the model are set to zero.
+
+* If a person had a value of 0 for all predictors (which may not be practically possible), 
+their predicted change in systolic blood pressure with thiazide use would be approximately -13 mmHg.
+
+* The main purpose of the intercept is often to ensure that the model fits the data well across the range of predictor values.
+* The intercept allows the regression line to "float" up or down to best fit the data, rather than forcing it to pass through the origin (0,0). 
+* It helps minimize the sum of squared residuals across all data points, improving the overall fit of the model.
+* Without an intercept, it assumes when all predictors are zero, the response must also be zero, which is just as unrealistic as setting everything zero
+
+
+
+* There is another way to change the intercepts to make it more "realistic"
+* By centering continuous predictors, simply subtract the mean value of a predictor from each of its values.
+It makes the intercept more interpretable- the intercept represents the expected value of the outcome when all continuous predictors are at their mean values
+(and categorical predictors are at their reference levels).
+* It can reduce multicollinearity in models with interaction terms or polynomial terms.
+* It doesn't change the slope coefficients or the fit of the model, only the intercept.
+
+* If I centered 'updated_age' by subtracting the mean age from each age value, the intercept would then represent the expected blood pressure change for a person of average age.
+* If I also centered 'bmi', the intercept would represent the expected blood pressure change for a person of average age and average BMI.
+
+* Code for centering the continuous predictors: 
+generate centered_age = updated_age - mean(updated_age)
+generate centered_bmi = bmi - mean(bmi)
