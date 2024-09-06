@@ -254,6 +254,50 @@ stcox group RZ_AGE bmi RANDASSIGN GENDER SUB_CKD race_black
                                         ------------------------------------------------------------------------------
 
 
+* test assumptions
+
+
+ estat phtest, detail
+
+      Test of proportional-hazards assumption
+
+      Time:  Time
+      ----------------------------------------------------------------
+                  |       rho            chi2       df       Prob>chi2
+      ------------+---------------------------------------------------
+      1b.mra_del~e|            .            .        1             .
+      2.mra_delt~e|     -0.09086         0.41        1         0.5230
+      3.mra_delt~e|     -0.03469         0.04        1         0.8443
+      updated_age |      0.14413         0.71        1         0.3994
+      bmi         |      0.09723         0.44        1         0.5047
+      0b.RANDASS~N|            .            .        1             .
+      1.RANDASSIGN|     -0.13183         0.62        1         0.4315
+      1b.GENDER   |            .            .        1             .
+      2.GENDER    |     -0.04515         0.07        1         0.7970
+      0b.SUB_CKD  |            .            .        1             .
+      1.SUB_CKD   |     -0.13418         0.51        1         0.4756
+      0b.race_bl~k|            .            .        1             .
+      1.race_black|     -0.20488         0.72        1         0.3962
+      ------------+---------------------------------------------------
+      global test |                      2.12        8         0.9770
+      ----------------------------------------------------------------
+
+
+* Interpretation of the test of the proportional hazards assumption
+
+* The global test at the bottom (Prob>chi2 = 0.9770) is greater than 0.05 suggests that the proportional hazards assumption is not violated. 
+
+* Individual variable "Prob>chi2" p-values are above 0.05, indicating that none of the individual variables violate the proportional hazards assumption.
+
+* The "rho" column shows the correlation between scaled Schoenfeld residuals and time. 
+
+* A rho close to zero indicates the assumption is met.
+
+* The "." entries for some variables (1b.mra_dele, 0b.RANDASSN, 1b.GENDER, 0b.SUB_CKD, 0b.race_bl~k) are normal. These represent the reference categories for categorical variables and are not tested separately.
+
+The relationship between mra_delta_SBP tertiles and the hazard of the event appears to be consistent over the follow-up period.
+
+
 * Power calculation 
 * Calculate Power for the Given Sample Size
 * Using HR of "group" HR 1.37 
