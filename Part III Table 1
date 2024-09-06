@@ -116,3 +116,89 @@ export delimited maskid formdays day_of_exposure thiazide_daystart thiazide_user
 save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/MRA_thiazide_nonoverlap_users_subset9.4.dta", replace
 
 
+
+* Update the averaged BP prior to thiazide and the delta BP post thiazide (remove the ones who also belong to MRA cohort) 
+
+. use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/thiazide_PURE_users_subset9.4.dta"
+
+
+
+. merge 1:m maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/final_masterdata_thiazide_9.3 .dta"
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        52,813
+        from master                         0  (_merge==1)
+        from using                     52,813  (_merge==2)
+
+    matched                            27,230  (_merge==3)
+    -----------------------------------------
+
+* These 53 individuals are the ones who is in thiazide cohort but also belongs to MRA - 
+. distinct maskid if _merge ==2 & thiazide_cohort ==1
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |       1129         53
+
+. gen dummy = 1 if _merge ==2 & thiazide_cohort ==1
+
+. distinct maskid if thiazide_cohort ==1 & dummy !=. 
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |       1129         53
+
+. distinct maskid if thiazide_cohort ==1 & dummy !=1
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |      27230       1540
+
+* correct number- 1540 subjects in thiazide cohort- after excluding the 53 
+
+. summarize new_first_sbp_avg_filled, detail, if thiazide_cohort ==1 & dummy !=1
+
+                       thiazide cohort
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%          110             99
+ 5%          120             99
+10%          125             99       Obs               4,259
+25%          131             99       Sum of Wgt.       4,259
+
+50%          139                      Mean             140.73
+                        Largest       Std. Dev.      14.29287
+75%          149            207
+90%          161            207       Variance       204.2862
+95%          166            207       Skewness       .4616135
+99%          177            207       Kurtosis       3.446943
+
+
+* The mean delta SBP post thiazide is -14.5 mmHg 
+
+. summarize mean_bp_diff_thiazide_filled, detail, if thiazide_cohort ==1 & dummy !=1
+
+                       thiazide cohort
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%          -54            -95
+ 5%          -41            -95
+10%          -35            -95       Obs              27,230
+25%        -23.5            -95       Sum of Wgt.      27,230
+
+50%       -13.75                      Mean          -14.52714
+                        Largest       Std. Dev.      15.37093
+75%           -5             70
+90%          3.5             70       Variance       236.2656
+95%     8.666667             70       Skewness      -.1234136
+99%         21.5             70       Kurtosis        4.10672
+
+. 
+rename dummy overlap53
+
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/masterdata_w_overlapidentified9.6.dta"
+
