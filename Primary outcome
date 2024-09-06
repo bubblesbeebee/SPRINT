@@ -2,25 +2,62 @@
 key variables including age, CKD, gender, race, BMI and BP difference over time. 
 
 use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/bmi+keyvar_MRA_thiazide_nonoverlap9.4.dta"
+
 . merge 1:m maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/primaryall.dta"
 
-    Result                           # of obs.
-    -----------------------------------------
-    not matched                         2,666
-        from master                     1,762  (_merge==1)
-        from using                        904  (_merge==2)
-
-    matched                               142  (_merge==3)
-    -----------------------------------------
+                        Result                           # of obs.
+                        -----------------------------------------
+                        not matched                         2,666
+                            from master                     1,762  (_merge==1)
+                            from using                        904  (_merge==2)
+                    
+                        matched                               142  (_merge==3)
+                        -----------------------------------------
 
 . tab cohort if _merge ==3
 
-     cohort |      Freq.     Percent        Cum.
+                             cohort |      Freq.     Percent        Cum.
+                        ------------+-----------------------------------
+                                MRA |         21       14.79       14.79
+                           thiazide |        121       85.21      100.00
+                        ------------+-----------------------------------
+                              Total |        142      100.00
+
+
+* generate tertiles 
+
+. tabstat mra_delta_SBP, by(tertile_var) statistics(min max) nototal
+
+                            Summary for variables: mra_delta_SBP
+                                 by categories of: tertile_var (3 quantiles of mra_delta_SBP)
+                            
+                            tertile_var |       min       max
+                            ------------+--------------------
+                                      1 |       -61    -16.67
+                                      2 |     -16.5      -4.5
+                                      3 |     -4.33        31
+                            ---------------------------------
+
+* Tidy up variables
+. gen race_black = . 
+
+. replace race_black = 1 if RACE == "BLACK"
+
+. replace race_black = 0 if RACE !="BLACK"
+
+. tab race_black
+
+ race_black |      Freq.     Percent        Cum.
 ------------+-----------------------------------
-        MRA |         21       14.79       14.79
-   thiazide |        121       85.21      100.00
+          0 |      2,183       77.74       77.74
+          1 |        625       22.26      100.00
 ------------+-----------------------------------
-      Total |        142      100.00
+      Total |      2,808      100.00
+
+
+
+
+
 
 # in this file for all primary outcomes, only 21 MRAs users reached primary endpoint
 
@@ -47,21 +84,21 @@ STATA16 code for KM
 
 . stset time_to_event, failure(event == 1)
 
-     failure event:  event == 1
-obs. time interval:  (0, time_to_event]
- exit on or before:  failure
-
-------------------------------------------------------------------------------
-      1,904  total observations
-      1,762  event time missing (time_to_event>=.)              PROBABLE ERROR
-          8  observations end on or before enter()
-------------------------------------------------------------------------------
-        134  observations remaining, representing
-        134  failures in single-record/single-failure data
-     99,107  total analysis time at risk and under observation
-                                                at risk from t =         0
-                                     earliest observed entry t =         0
-                                          last observed exit t =     1,710
+                                                 failure event:  event == 1
+                                            obs. time interval:  (0, time_to_event]
+                                             exit on or before:  failure
+                                            
+                                            ------------------------------------------------------------------------------
+                                                  1,904  total observations
+                                                  1,762  event time missing (time_to_event>=.)              PROBABLE ERROR
+                                                      8  observations end on or before enter()
+                                            ------------------------------------------------------------------------------
+                                                    134  observations remaining, representing
+                                                    134  failures in single-record/single-failure data
+                                                 99,107  total analysis time at risk and under observation
+                                                                                            at risk from t =         0
+                                                                                 earliest observed entry t =         0
+                                                                                      last observed exit t =     1,710
 
 
 
@@ -70,63 +107,45 @@ obs. time interval:  (0, time_to_event]
 . sts graph, by(cohort) title("Kaplan-Meier Survival Curve: Thiazide vs MRA") legend(label(1 "Thiazide") label(2 "MRA")) ytitle("Survival Probability") xtitle("Time (days)")
 
 
--> stset time_to_event, failure(event==1)
-
-     failure event:  event == 1
-obs. time interval:  (0, time_to_event]
- exit on or before:  failure
-
-------------------------------------------------------------------------------
-      1,904  total observations
-      1,762  event time missing (time_to_event>=.)              PROBABLE ERROR
-          8  observations end on or before enter()
-------------------------------------------------------------------------------
-        134  observations remaining, representing
-        134  failures in single-record/single-failure data
-     99,107  total analysis time at risk and under observation
-                                                at risk from t =         0
-                                     earliest observed entry t =         0
-                                          last observed exit t =     1,710
-
 
 * 8 of them had event occured prior to MRA/thiazide initiation 
-
+* removed
 
 . sts test cohort
 
-         failure _d:  event == 1
-   analysis time _t:  time_to_event
-
-            
-            Log-rank test for equality of survivor functions
-            
-                     |   Events         Events
-            cohort   |  observed       expected
-            ---------+-------------------------
-            MRA      |        19          13.78
-            thiazide |       115         120.22
-            ---------+-------------------------
-            Total    |       134         134.00
-            
-                           chi2(1) =       2.25
-                           Pr>chi2 =     0.1339
-            
+                                                     failure _d:  event == 1
+                                               analysis time _t:  time_to_event
+                                            
+                                                        
+                                                        Log-rank test for equality of survivor functions
+                                                        
+                                                                 |   Events         Events
+                                                        cohort   |  observed       expected
+                                                        ---------+-------------------------
+                                                        MRA      |        19          13.78
+                                                        thiazide |       115         120.22
+                                                        ---------+-------------------------
+                                                        Total    |       134         134.00
+                                                        
+                                                                       chi2(1) =       2.25
+                                                                       Pr>chi2 =     0.1339
+                                                        
 
 
 Python output for KM
-                    Log-rank test results:
-                       test_statistic         p  -log2(p)
-                    0        2.247188  0.133857  2.901231
-                    
-                    Thiazide Summary:
-                    Total patients: 115
-                    Number of events: 115.0
-                    Median survival time: 774.00 days
-                    
-                    MRA Summary:
-                    Total patients: 19
-                    Number of events: 19.0
-                    Median survival time: 476.00 days
+                                                    Log-rank test results:
+                                                       test_statistic         p  -log2(p)
+                                                    0        2.247188  0.133857  2.901231
+                                                    
+                                                    Thiazide Summary:
+                                                    Total patients: 115
+                                                    Number of events: 115.0
+                                                    Median survival time: 774.00 days
+                                                    
+                                                    MRA Summary:
+                                                    Total patients: 19
+                                                    Number of events: 19.0
+                                                    Median survival time: 476.00 days
 
 
 * The Log-Rank test suggests that there is no statistically significant difference in survival between the MRA and thiazide groups, as the p-value is 0.1339. 
@@ -178,7 +197,7 @@ time at risk               11178    588.3158          37        476       1500
 failures                      19           1           1          1          1
 ------------------------------------------------------------------------------
 
-----------------------------------------------------------------------------------------------------------
+
 -> cohort = thiazide
 
          failure _d:  event == 1
@@ -200,12 +219,134 @@ time at risk               87929       764.6           1        774       1710
 failures                     115           1           1          1          1
 ------------------------------------------------------------------------------
 
-. 
+
+stcox group RZ_AGE bmi RANDASSIGN GENDER SUB_CKD race_black 
+
+                                                 failure _d:  event == 1
+                                           analysis time _t:  time_to_event
+                                        
+                                        Iteration 0:   log likelihood = -526.20363
+                                        Iteration 1:   log likelihood = -512.76389
+                                        Iteration 2:   log likelihood = -512.60532
+                                        Iteration 3:   log likelihood = -512.60516
+                                        Iteration 4:   log likelihood = -512.60516
+                                        Refining estimates:
+                                        Iteration 0:   log likelihood = -512.60516
+                                        
+                                        Cox regression -- Breslow method for ties
+                                        
+                                        No. of subjects =          134                  Number of obs    =         134
+                                        No. of failures =          134
+                                        Time at risk    =        99107
+                                                                                        LR chi2(7)       =       27.20
+                                        Log likelihood  =   -512.60516                  Prob > chi2      =      0.0003
+                                        
+                                        ------------------------------------------------------------------------------
+                                                  _t | Haz. Ratio   Std. Err.      z    P>|z|     [95% Conf. Interval]
+                                        -------------+----------------------------------------------------------------
+                                               group |   1.373954   .3583319     1.22   0.223     .8240928    2.290702
+                                              RZ_AGE |   .9872064   .0107408    -1.18   0.237     .9663776    1.008484
+                                                 bmi |   1.059811    .019887     3.10   0.002     1.021541    1.099514
+                                          RANDASSIGN |   .9143341   .1732069    -0.47   0.636     .6307504    1.325416
+                                              GENDER |   1.016852   .2131534     0.08   0.936     .6742608    1.533512
+                                             SUB_CKD |   .6782022    .137448    -1.92   0.055     .4558796    1.008947
+                                          race_black |   .5913923   .1401664    -2.22   0.027     .3716479    .9410652
+                                        ------------------------------------------------------------------------------
 
 
-sts graph if age_group == 1, by(group)
+* Power calculation 
+* Calculate Power for the Given Sample Size
+* Using HR of "group" HR 1.37 
+* This will return the power for detecting an effect with a hazard ratio of 1.374 at a significance level of 0.05.
+
+                    
+ . stpower logrank, hratio(1.374) n(134) alpha(0.05)
+                    
+                    Estimated power for two-sample comparison of survivor functions
+                    Log-rank test, Freedman method
+                    Ho: S1(t) = S2(t)
+                    
+                    Input parameters:
+                    
+                          alpha =    0.0500  (two sided)
+                         hratio =    1.3740
+                              N =       134
+                             p1 =    0.5000
+                    
+                    Estimated number of events and power:
+                    
+                              E =       134
+                          power =    0.4458
+                    
+* If we use HR 0.8 assuming MRA confers protection
+
+. stpower logrank, hratio(0.8) n(134) alpha(0.05)
+
+                    Estimated power for two-sample comparison of survivor functions
+                    Log-rank test, Freedman method
+                    Ho: S1(t) = S2(t)
+                    
+                    Input parameters:
+                    
+                          alpha =    0.0500  (two sided)
+                         hratio =    0.8000
+                              N =       134
+                             p1 =    0.5000
+                    
+                    Estimated number of events and power:
+                    
+                              E =       134
+                          power =    0.2502
+
+* Still inadequate power with 134 total events
 
 
 
 
 
+
+
+* Calculate Required Sample Size for a Given Power
+stpower logrank, hratio(1.374) power(0.80) alpha(0.05) 
+
+                            Estimated sample sizes for two-sample comparison of survivor functions
+                            Log-rank test, Freedman method
+                            Ho: S1(t) = S2(t)
+                            
+                            Input parameters:
+                            
+                                  alpha =    0.0500  (two sided)
+                                 hratio =    1.3740
+                                  power =    0.8000
+                                     p1 =    0.5000
+                            
+                            Estimated number of events and sample sizes:
+                            
+                                      E =       318
+                                      N =       318
+                                     N1 =       159
+                                     N2 =       159
+
+To achieve 80% power with a hazard ratio of 1.374, 318 events needed
+
+* If I set the HR 0.8 expecting MRA confers benefit
+                        . stpower logrank, hratio(0.8) power(0.80) alpha(0.05) 
+                        
+                        Estimated sample sizes for two-sample comparison of survivor functions
+                        Log-rank test, Freedman method
+                        Ho: S1(t) = S2(t)
+                        
+                        Input parameters:
+                        
+                              alpha =    0.0500  (two sided)
+                             hratio =    0.8000
+                              power =    0.8000
+                                 p1 =    0.5000
+                        
+                        Estimated number of events and sample sizes:
+                        
+                                  E =       636
+                                  N =       636
+                                 N1 =       318
+                                 N2 =       318
+* I would need 636 events?!
