@@ -99,3 +99,10 @@ drop if dup > 1
 save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/K w 1869 .dta"
 
 
+drop _merge
+merge 1:1 maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/primaryall+nonoverlapmrathiazide.dta"
+gen race_black = 1 if RACE == "BLACK"
+replace race_black = 0 if RACE != "BLACK" 
+tab race_black
+
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/primary+nonoverlap+keyvar+K.dta"
