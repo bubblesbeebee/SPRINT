@@ -1,0 +1,23 @@
+* To get Potassium 
+
+
+* Baseline K (within 60 days) 
+. gen dummy = thiazide_daystart - days_k
+. replace dummy =. if dummy > 60 | dummy <0 
+
+* Calculate the mean of `dummy` for each `maskid` aka the difference in duration 
+. bysort maskid: egen avg_dummy = mean(dummy)
+
+. gen K = result_k if dummy !=. 
+. bysort maskid: egen avg_k = mean(K)
+rename avg_k avg_k_pre_thiazide 
+
+* Potassium post treatment 
+. gen dummy2 = thiazide_daystart - days_k
+. replace dummy2 =. if dummy2 <= -90 | dummy2>= -30 
+
+* Calculate the mean of `dummy2` for each `maskid` aka the difference in duration 
+. bysort maskid: egen avg_dummy2 = mean(dummy2)
+
+. gen K2 = result_k if dummy2 !=. 
+. bysort maskid: egen avg_k_post_thiazide = mean(K2)
