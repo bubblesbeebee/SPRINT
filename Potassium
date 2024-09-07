@@ -1,6 +1,61 @@
 * To get Potassium 
 
+* start with primary outcome data
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/primaryall.dta"
 
+* merge with non - overlap MRA + thiazide cohort data
+merge m:m maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/MRA_thiazide_nonoverlap_users_subset9.4.dta"
+drop if _merge == 1
+tab cohort
+sort maskid formdays
+quietly by maskid formdays:  gen dup = cond(_N==1,0,_n)
+tab dup 
+drop if dup > 1
+tab cohort
+drop _merge
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/primaryall+nonoverlapmrathiazide.dta"
+
+* get the baseline averaged BP and delta BP 
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/delta_SBP_MRA+purethiazide_prepfor python for graph9.4.dta"
+drop _merge
+keep maskid new_first_sbpavgfilledthiazide mean_bp_diff_thiazide thiazide_relative_reduction thiazide_user_info thiazide_daystart new_first_sbp_avg_filled_mra mra_daystart mra_user_info mra_relative_reduction mra_user_info cohort thiazide_delta_SBP mra_delta_SBP day_of_exposure
+merge m:m maskid  using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/primaryall+nonoverlapmrathiazide.dta"
+distinct maskid if _merge == 3
+drop dup 
+sort maskid formdays
+quietly by maskid formdays:  gen dup = cond(_N==1,0,_n)
+tab dup 
+drop if dup >1
+tab dup 
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/primaryall+nonoverlapmrathiazide.dta", replace
+
+* merge with key variables 
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/bmi+keyvar_MRA_thiazide_nonoverlap9.4.dta"
+drop _merge
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/bmi+keyvar_MRA_thiazide_nonoverlap9.4.dta", replace
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/primaryall+nonoverlapmrathiazide.dta"
+drop _merge
+merge m:m maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/bmi+keyvar_MRA_thiazide_nonoverlap9.4.dta"
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/primaryall+nonoverlapmrathiazide.dta", replace
+
+* create a trimmed K data 
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/K_Na_Cret_GFR.dta"
+keep maskid result_k days_k 
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/potassium only .dta"
+
+* create a trimmed thiazide+mra data 
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/primaryall+nonoverlapmrathiazide.dta"
+drop _merge
+keep maskid thiazide_daystart mra_daystart formdays
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/intermediate.dta"
+
+* merge the K and non-overlap mra + thiazide data 
+merge m:m maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/potassium only .dta"
+drop if _merge ==2
+
+
+* now calculate K 
+* Start with thiazide
 * Baseline K (within 60 days) 
 . gen dummy = thiazide_daystart - days_k
 . replace dummy =. if dummy > 60 | dummy <0 
@@ -9,8 +64,7 @@
 . bysort maskid: egen avg_dummy = mean(dummy)
 
 . gen K = result_k if dummy !=. 
-. bysort maskid: egen avg_k = mean(K)
-rename avg_k avg_k_pre_thiazide 
+. bysort maskid: egen avg_k_pre_thiazide = mean(K)
 
 * Potassium post treatment 
 . gen dummy2 = thiazide_daystart - days_k
@@ -21,3 +75,27 @@ rename avg_k avg_k_pre_thiazide
 
 . gen K2 = result_k if dummy2 !=. 
 . bysort maskid: egen avg_k_post_thiazide = mean(K2)
+
+
+* replicate with MRA 
+* Baseline K (within 60 days) 
+. gen dummy3 = mra_daystart - days_k
+. replace dummy3 =. if dummy3 > 60 | dummy3 <0 
+
+. gen K3 = result_k if dummy3 !=. 
+. bysort maskid: egen avg_k_pre_mra = mean(K3)
+
+* Potassium post treatment 
+. gen dummy4 = mra_daystart - days_k
+. replace dummy4 =. if dummy4 <= -90 | dummy4>= -30 
+
+. gen K4 = result_k if dummy4 !=. 
+. bysort maskid: egen avg_k_post_mra = mean(K4)
+
+sort maskid 
+quietly by maskid formdays:  gen dup = cond(_N==1,0,_n)
+tab dup 
+drop if dup > 1
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/K w 1869 .dta"
+
+
