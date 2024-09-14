@@ -258,5 +258,70 @@ summarize avg_K_prior_thiazide_filled if cohort == "thiazide"
 save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/potassium only (within 30 days) with nonoverlap w variables.dta"
 
 
-
-
+* Potassium 4 - removed the outlier 15.3 early on
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/potassium only .dta", clear
+merge m:m maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/intermediate.dta"
+drop if _merge == 1
+distinct maskid if _merge ==3
+. gen dummy = thiazide_daystart - days_k
+. replace dummy =. if dummy > 60 | dummy <0 
+gen dummy2 = thiazide_daystart - days_k
+. replace dummy2 =. if dummy2 <= -90 | dummy2>= -30 
+gen dummy3 = mra_daystart - days_k
+. replace dummy3 =. if dummy3 > 60 | dummy3 <0 
+gen dummy4 = mra_daystart - days_k
+. replace dummy4 =. if dummy4 <= -90 | dummy4>= -30 
+drop if dummy == . & dummy2 ==. & dummy3 ==. & dummy4 ==. 
+distinct maskid 
+distinct maskid if dummy !=. 
+distinct maskid if dummy2 !=. 
+rename dummy day_K_prior_thiazide
+rename dummy2 day_K_post_thiazaide
+rename dummy3 day_K_prior_mra
+rename dummy4 day_K_post_mra
+replace day_K_post_thiazaide = abs(day_K_post_thiazaide)
+rename day_K_post_thiazaide day_K_post_thiazide
+replace day_K_post_mra = abs(day_K_post_mra)
+replace result_k = 5.3 in 556
+sort result_k
+sort result_k
+sort maskid
+sort maskid
+bysort maskid: egen avg_K_prior_thiazide = mean(result_k) if day_K_prior_thiazide !=.
+bysort maskid: egen avg_K_ppost_thiazide = mean(result_k) if day_K_post_thiazide !=.
+bysort maskid: egen avg_K_prior_mra = mean(result_k) if day_K_prior_mra !=.
+bysort maskid: egen avg_K_post_mra = mean(result_k) if day_K_post_mra !=.
+distinct maskid if day_K_prior_mra !=.
+distinct maskid if day_K_post_mra !=.
+distinct maskid if day_K_prior_thiazide !=.
+distinct maskid if avg_K_ppost_thiazide !=.
+distinct maskid 
+gen K = result_k if day_K_prior_thiazide!=. 
+bysort maskid: egen avg_k_pre_thiazide = mean(K)
+by maskid: egen avg_K_prior_thiazide_filled = min(avg_K_prior_thiazide)
+by maskid: egen avg_K_ppost_thiazide_filled = min(avg_K_ppost_thiazide)
+by maskid: egen avg_K_prior_mra_filled = min(avg_K_prior_mra)
+by maskid: egen avg_K_post_mra_filled = min(avg_K_post_mra)
+sort maskid formdays
+sort maskid formdays
+quietly by maskid formdays:  gen dup = cond(_N==1,0,_n)
+tab dup 
+drop if dup > 1
+tab dup
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/potassium filtered 9.14.dta"
+drop _merge
+merge m:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/primaryall+nonoverlapmrathiazide.dta"
+gen race_black = 1 if RACE == "BLACK"
+replace race_black = 0 if RACE != "BLACK" 
+tab race_black
+drop dup 
+sort maskid formdays
+quietly by maskid formdays:  gen dup = cond(_N==1,0,_n)
+tab dup 
+regress thiazide_delta_SBP bmi RANDASSIGN updated_age GENDER race_black SUB_CKD CVDHISTORY avg_K_prior_thiazide_filled avg_K_ppost_thiazide_filled 
+gen delta_K_mra = avg_K_post_mra_filled -avg_K_prior_mra_filled
+gen delta_K_thiazide = avg_K_ppost_thiazide_filled -avg_K_prior_thiazide_filled
+summarize delta_K_mra
+summarize delta_K_thiazide
+summarize avg_K_prior_thiazide avg_K_prior_thiazide_filled avg_K_ppost_thiazide avg_K_ppost_thiazide_filled avg_K_prior_mra avg_K_prior_mra_filled avg_K_post_mra avg_K_post_mra_filled
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/potassium filtered w non overlap data 9.14.dta"
