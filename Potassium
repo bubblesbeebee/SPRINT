@@ -325,3 +325,47 @@ summarize delta_K_mra
 summarize delta_K_thiazide
 summarize avg_K_prior_thiazide avg_K_prior_thiazide_filled avg_K_ppost_thiazide avg_K_ppost_thiazide_filled avg_K_prior_mra avg_K_prior_mra_filled avg_K_post_mra avg_K_post_mra_filled
 save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/potassium filtered w non overlap data 9.14.dta"
+
+
+* Now i add in the day 0-30 K 
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/potassium filtered w non overlap data 9.14.dta"
+drop _merge
+merge 1:1 maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/potassium only (within 30 days) trimmed.dta"
+browse maskid avg_K_post_thiazide_filled30 avg_K_ppost_thiazide_filled
+gen avg_K_post_thiazide0to90 = avg_K_post_thiazide_filled30 if avg_K_ppost_thiazide_filled  ==. & avg_K_post_thiazide_filled30!=.
+replace avg_K_post_thiazide0to90 = avg_K_ppost_thiazide_filled if avg_K_post_thiazide_filled30 ==. & avg_K_ppost_thiazide_filled!=. 
+replace  avg_K_post_thiazide0to90 = avg_K_post_thiazide_filled30 if avg_K_post_thiazide0to90 ==. & avg_K_post_thiazide_filled30 !=. 
+gen delta_K_thiazide_0to30 = avg_K_post_thiazide0to90 - avg_K_prior_thiazide_filled
+summarize delta_K_thiazide_0to30
+summarize delta_K_thiazide
+rename delta_K_thiazide_0to30 delta_K_thiazide_0to90
+summarize delta_K_thiazide
+summarize delta_K_thiazide_0to90
+
+
+
+
+
+
+* Now to find the KCI use and combine with the medication list 
+merge 1:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/bp_med_log_v2.dta"
+drop if _merge !=3
+
+drop dup
+sort maskid formdays
+quietly by maskid formdays:  gen dup = cond(_N==1,0,_n)
+tab dup 
+drop if dup > 1
+
+gen on_potassium = 0
+forvalues i = 1/10 {
+    replace on_potassium = 1 if ustrregexm(lower(medname`i'), "(pota|klor|kci|k-dur)")
+}
+tab on_potassium 
+
+
+gen on_losartanpotassium = 0
+forvalues i = 1/10 {
+    replace on_losartanpotassium = 1 if ustrregexm(lower(medname`i'), "(losartan potassium)")
+}
+
