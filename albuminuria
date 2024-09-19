@@ -1,0 +1,59 @@
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/labs.dta"
+browse fasting_umalcr fasting_umali result_umalcr result_umali
+keep maskid days_umalcr result_umalcr maskid
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/albuminuria.dta"
+merge m:m maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/intermediate.dta"
+keep if _merge == 3
+gen dummy = thiazide_daystart - days_umalcr 
+replace dummy =. if dummy > 60 | dummy <0 
+gen dummy2 = thiazide_daystart - days_umalcr 
+replace dummy2 =. if dummy2 <= -90 | dummy2>= -30 
+gen dummy3 = mra_daystart - days_umalcr 
+replace dummy3 =. if dummy3 > 60 | dummy3 <0 
+gen dummy4 = mra_daystart - days_umalcr 
+replace dummy4 =. if dummy4 <= -90 | dummy4>= -30 
+drop if dummy == . & dummy2 ==. & dummy3 ==. & dummy4 ==. 
+rename dummy day_alb_prior_thiazide
+rename dummy2 day_alb_post_thiazaide
+rename dummy3 day_alb_prior_mra
+rename dummy4 day_alb_post_mra
+replace day_alb_post_thiazaide = abs(day_alb_post_thiazaide)
+rename day_alb_post_thiazaide day_alb_post_thiazide
+replace day_alb_post_mra = abs(day_alb_post_mra)
+bysort maskid: egen avg_alb_prior_thiazide = mean(result_umalcr) if day_alb_prior_thiazide !=.
+bysort maskid: egen avg_alb_post_thiazide = mean(result_umalcr) if day_alb_post_thiazide !=.
+bysort maskid: egen avg_alb_prior_mra = mean(result_umalcr) if day_alb_prior_mra !=.
+bysort maskid: egen avg_alb_post_mra = mean(result_umalcr) if day_alb_post_mra !=.
+by maskid: egen avg_alb_prior_thiazide_filled = min(avg_alb_prior_thiazide)
+by maskid: egen avg_alb_post_thiazide_filled = min(avg_alb_post_thiazide)
+by maskid: egen avg_alb_prior_mra_filled = min(avg_alb_prior_mra)
+by maskid: egen avg_alb_post_mra_filled = min(avg_alb_post_mra)
+sort maskid formdays
+quietly by maskid formdays:  gen dup = cond(_N==1,0,_n)
+tab dup 
+summarize avg_alb_post_mra avg_alb_post_thiazide avg_alb_prior_mra avg_alb_prior_thiazide
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/albuminuria filtered w nonoverlap 9.19.dta"
+
+
+. save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/albuminuria filtered w n
+> onoverlap 9.19.dta", replace
+file /Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/albuminuria filtered w nono
+> verlap 9.19.dta saved
+
+. use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/potassium filtered w non 
+> overlap data 9.14.dta"
+
+. drop _merge
+
+. merge 1:1 maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/albumi
+> nuria filtered w nonoverlap 9.19.dta"
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                           391
+        from master                       391  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                             1,478  (_merge==3)
+    -----------------------------------------
+
