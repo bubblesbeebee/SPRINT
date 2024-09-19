@@ -369,3 +369,11 @@ forvalues i = 1/10 {
     replace on_losartanpotassium = 1 if ustrregexm(lower(medname`i'), "(losartan potassium)")
 }
 
+
+
+
+
+
+
+
+
