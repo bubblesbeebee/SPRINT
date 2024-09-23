@@ -1,0 +1,27 @@
+sort maskid formdays
+gen med_oxin = 0
+gen med_triam = 0
+gen med_olol = 0
+gen med_ipine_azem = 0
+gen med_mra = 0
+gen med_fur_bum_tors = 0
+gen med_hydral_azine = 0
+gen med_pril_artan = 0
+gen med_idine_clon = 0
+gen med_minoxi = 0 
+gen med_guanfacine = 0 
+gen med_thiazide = 0 
+forvalues i = 1/10 {
+    replace med_oxin = 1 if regexm(lower(medname`i'), "(cardu|doxa|osin|oxin|hytrin|tera|tamsu|alfu)")
+    replace med_triam = 1 if regexm(lower(medname`i'), "(triam|amil)")
+    replace med_olol = 1 if regexm(lower(medname`i'), "(olol|metop|coreg|carv|lopre|topr|propa|nebi|nado|atenelol)")
+    replace med_ipine_azem = 1 if regexm(lower(medname`i'), "(ipine|azem|norv|vera|nife|proca|nicar|nefe|caduet)")
+    replace med_minoxi = 1 if regexm(lower(medname`i'), "(mino|xidil)")
+    replace med_guanfacine = 1 if regexm(lower(medname`i'), "(guan)")
+    replace med_mra = 1 if regexm(lower(medname`i'), "(spir|eple|aldac|inspra)")
+    replace med_fur_bum_tors = 1 if regexm(lower(medname`i'), "(fur|bum|tors|inda|etha|demadex)")
+    replace med_hydral_azine = 1 if regexm(lower(medname`i'), "(hydral|azine)")
+    replace med_pril_artan = 1 if regexm(lower(medname`i'), "(pril|artan|benic|vals|olme|edarbi|diovan|azil|trando|micardis|atacand)")
+    replace med_idine_clon = 1 if regexm(lower(medname`i'), "(idine|clon|cata)")                                        
+    replace med_thiazide = 1 if regexm(lower(medname`i'), "(thia|chlo|chlorth|hyrdo|thiaz|azide|hyzaar|indap|metola|diurel|hctz|hygro|edarbyclor)")                                         
+}
