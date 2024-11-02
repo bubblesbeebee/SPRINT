@@ -1,1 +1,171 @@
+# Stratify by RANDASSIGN
+
+* Split the data by RANDASSIGN and run separate regressions
+by RANDASSIGN, sort: regress delta_SBP treatment CIGSMOKER CVDHISTORY NUMBEROFDRUGS SUB_CKD baseline_K baseline_SBP blacks bmi delta_K female med_fur_bum_tors med_guanfacine med_hydral_azine med_idine_clon med_ipine_azem med_minoxi med_olol med_oxin med_pril_artan med_triam updated_age
+
+
+* Start with the full model
+regress delta_SBP treatment CIGSMOKER CVDHISTORY NUMBEROFDRUGS SUB_CKD baseline_K baseline_SBP blacks bmi delta_K female med_fur_bum_tors med_guanfacine med_hydral_azine med_idine_clon med_ipine_azem med_minoxi med_olol med_oxin med_pril_artan med_triam updated_age
+
+* Run stepwise regression with backward elimination
+stepwise, pr(.05): regress delta_SBP treatment CIGSMOKER CVDHISTORY NUMBEROFDRUGS SUB_CKD baseline_K baseline_SBP blacks bmi delta_K female med_fur_bum_tors med_guanfacine med_hydral_azine med_idine_clon med_ipine_azem med_minoxi med_olol med_oxin med_pril_artan med_triam updated_age
+
+
+# Interaction terms
+regress delta_SBP c.baseline_SBP##i.treatment med_pril_artan NUMBEROFDRUGS RANDASSIGN med_olol bmi race_black
+regress delta_SBP i.race_black##i.treatment med_pril_artan NUMBEROFDRUGS RANDASSIGN baseline_SBP med_olol bmi
+regress delta_SBP c.bmi##i.treatment med_pril_artan NUMBEROFDRUGS RANDASSIGN baseline_SBP med_olol race_black
+regress delta_SBP i.med_pril_artan##i.treatment NUMBEROFDRUGS RANDASSIGN baseline_SBP med_olol bmi race_black
+regress delta_SBP c.NUMBEROFDRUGS##i.treatment med_pril_artan RANDASSIGN baseline_SBP med_olol bmi race_black
+
+
+
+
+
+
+
+# calculate margins
+# Margins provide results in terms of predicted outcomes (such as mean differences or adjusted predictions) rather than raw coefficients, 
+# the atmeans option, the margins are adjusted for other covariates by holding them at their mean values (or another specified value if you choose). This adjustment means that the calculated margins represent the effect of the interaction on the outcome while controlling for the other variables in the model. You can also adjust for covariates differently by specifying particular values for them in the margins command if needed.
+# The margins output would allow you to answer questions like:
+# What is the predicted blood pressure response (delta_SBP) for Black patients who received treatment, compared to Black patients who did not, at a baseline_SBP of 120?
+# Does the effect of treatment on delta_SBP differ for Black vs. non-Black patients at different levels of baseline blood pressure?
+
+
+#examine how the predicted blood pressure response (delta_SBP) varies for the race_black and treatment groups at different levels of baseline_SBP (130, 140, 150, 160, and 170). This helps identify if the effect of treatment on blood pressure response changes depending on initial blood pressure levels.
+
+margins race_black#treatment, at(baseline_SBP=(120(10)170)) ///
+    atmeans predict(xb)
+
+
+
+* Generate margins
+margins race_black#treatment, at(baseline_SBP=(120(10)180)) atmeans predict(xb)
+* Create visualization
+marginsplot,  title("Predicted BP Change by Baseline SBP, Race, and Treatment Type", size(medium)) ytitle("Predicted Change in SBP (mmHg)", size(small)) xtitle("Baseline SBP (mmHg)", size(small))  ylabel(-20(5)5, angle(0))  xlabel(120(10)180, angle(0))  plot1opts(connect(direct) msymbol(O) mcolor(navy) lcolor(navy))  plot2opts(connect(direct) msymbol(T) mcolor(maroon) lcolor(maroon))  plot3opts(connect(direct) msymbol(D) mcolor(forest_green) lcolor(forest_green))  plot4opts(connect(direct) msymbol(S) mcolor(purple) lcolor(purple))  legend(rows(2) size(small) order(1 "Non-Black/Thiazide" 2 "Black/Thiazide"  3 "Non-Black/MRA" 4 "Black/MRA")  title("Race and Treatment Groups")) scheme(s2color)  name(baselineSBP, replace)
+
+
+
+# 3 way interactions
+(this is the code for 4 lines) 
+regress delta_SBP i.treatment##race_black##i.RANDASSIGN med_pril_artan NUMBEROFDRUGS baseline_SBP med_olol bmi
+margins race_black#treatment#RANDASSIGN
+marginsplot,   plot1opts(lcolor(navy) lpattern(solid))  plot2opts(lcolor(maroon) lpattern(solid)) plot3opts(lcolor(navy) lpattern(dash))   plot4opts(lcolor(maroon) lpattern(dash)) title("Predicted Blood Pressure Change by Race, Treatment, and Random Assignment") ytitle("Predicted Change in SBP") xtitle("Random Assignment (Standard vs Intensive)") legend(order(1 "Non-Black, No Treatment" 2 "Black, No Treatment"  3 "Non-Black, Treatment" 4 "Black, Treatment"))  name(threeWay, replace)
+graph save "threeWay" "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/threeWay.gph"
+
+
+# coefficient plot for 3 way interactions
+coefplot, drop(_cons)  xline(0)  mlabel format(%9.2f)  title("Coefficient Plot of Main Effects and Interactions") name(coef, replace)
+
+
+
+# by Race, the effect of thiazide versus MRA
+margins treatment, at(baseline_SBP=(120(10)180)) over(race_black) atmeans predict(xb)
+* Corrected marginsplot command
+marginsplot,  title("Predicted BP Change by Race Groups")  by(race_black)  ytitle("Predicted Change in SBP (mmHg)", size(small))  xtitle("Baseline SBP (mmHg)", size(small))  ylabel(-20(5)5, angle(0)) xlabel(120(10)180, angle(0))  plot1opts(connect(direct) msymbol(O) mcolor(navy) lcolor(navy)) plot2opts(connect(direct) msymbol(T) mcolor(maroon) lcolor(maroon))  legend(rows(1) size(small)  order(1 "Thiazide" 2 "MRA") title("Treatment Type"))   yline(0, lpattern(dash) lcolor(gray)) scheme(s2color) name(baselineSBP_byrace, replace)
+graph save "baselineSBP_byrace" "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/baselineSBP_byrace.gph"
+
+
+
+
+
+# Interaction plot (2 way) and then stratify by randomization 
+
+regress delta_SBP i.treatment##race_black updated_age female SUB_CKD bmi med_pril_artan NUMBEROFDRUGS RANDASSIGN baseline_SBP med_olol med_thiazide
+margins treatment#race_black, at(RANDASSIGN=(0 1)) pwcompare
+margins treatment#race_black, at(RANDASSIGN=(0 1)) saving(mymargins, replace)
+marginsplot, plot1opts(connect(ascending) msymbol(square)) plot2opts(connect(ascending) msymbol(circle)) title("Thiazide/MRA Treatment Effects by Race and Randomization") subtitle("Left: Standard, Right: Intensive") xlabel(0 "Thiazide" 1 "MRA") ylabel(-20(5)0) legend(order(1 "Non-Black" 2 "Black")) name(interaction_plot, replace) by(RANDASSIGN) xsize(10) ysize(5)
+
+
+
+
+
+# predicted SBP change by baseline SBP, race and MRA/thiazide
+
+* Generate margins margins race_black#treatment, at(baseline_SBP=(120(10)180)) atmeans predict(xb) * Create visualization marginsplot, /// title("Predicted BP Change by Baseline SBP, Race, and Treatment Type", size(medium)) /// ytitle("Predicted Change in SBP (mmHg)", size(small)) /// xtitle("Baseline SBP (mmHg)", size(small)) /// ylabel(-20(5)5, angle(0)) /// xlabel(120(10)180, angle(0)) /// plot1opts(connect(direct) msymbol(O) mcolor(navy) lcolor(navy)) /// plot2opts(connect(direct) msymbol(T) mcolor(maroon) lcolor(maroon)) /// plot3opts(connect(direct) msymbol(D) mcolor(forest_green) lcolor(forest_green)) /// plot4opts(connect(direct) msymbol(S) mcolor(purple) lcolor(purple)) /// legend(rows(2) size(small) /// order(1 "Non-Black/Thiazide" 2 "Black/Thiazide" /// 3 "Non-Black/MRA" 4 "Black/MRA") /// title("Race and Treatment Groups")) /// scheme(s2color) /// name(baselineSBP, replace)
+
+
+
+# NOW 
+# predicted SBP change stratified by Randomization 
+
+* Generate margins for Standard group (RANDASSIGN=0)
+margins race_black#treatment if RANDASSIGN==0, at(baseline_SBP=(120(10)180)) atmeans predict(xb)
+
+* Create visualization for Standard group
+marginsplot, title("Predicted BP Change by Baseline SBP - Standard Treatment", size(medium)) ytitle("Predicted Change in SBP (mmHg)", size(small)) xtitle("Baseline SBP (mmHg)", size(small)) ylabel(-20(5)5, angle(0)) xlabel(120(10)180, angle(0)) plot1opts(connect(direct) msymbol(O) mcolor(navy) lcolor(navy)) plot2opts(connect(direct) msymbol(T) mcolor(maroon) lcolor(maroon)) plot3opts(connect(direct) msymbol(D) mcolor(forest_green) lcolor(forest_green)) plot4opts(connect(direct) msymbol(S) mcolor(purple) lcolor(purple)) legend(rows(2) size(small) order(1 "Non-Black/Thiazide" 2 "Black/Thiazide" 3 "Non-Black/MRA" 4 "Black/MRA") title("Race and Treatment Groups")) scheme(s2color) name(baselineSBP_standard, replace)
+
+* Generate margins for Intensive group (RANDASSIGN=1) 
+margins race_black#treatment if RANDASSIGN==1, at(baseline_SBP=(120(10)180)) atmeans predict(xb)
+
+* Create visualization for Intensive group
+marginsplot, title("Predicted BP Change by Baseline SBP - Intensive Treatment", size(medium)) ytitle("Predicted Change in SBP (mmHg)", size(small)) xtitle("Baseline SBP (mmHg)", size(small)) ylabel(-20(5)5, angle(0)) xlabel(120(10)180, angle(0)) plot1opts(connect(direct) msymbol(O) mcolor(navy) lcolor(navy)) plot2opts(connect(direct) msymbol(T) mcolor(maroon) lcolor(maroon)) plot3opts(connect(direct) msymbol(D) mcolor(forest_green) lcolor(forest_green)) plot4opts(connect(direct) msymbol(S) mcolor(purple) lcolor(purple)) legend(rows(2) size(small) order(1 "Non-Black/Thiazide" 2 "Black/Thiazide" 3 "Non-Black/MRA" 4 "Black/MRA") title("Race and Treatment Groups")) scheme(s2color) name(baselineSBP_intensive, replace)
+
+* Combine the graphs side by side
+graph combine baselineSBP_standard baselineSBP_intensive, rows(1) title("Predicted BP Change by Baseline SBP, Race, and Treatment Type", size(medium)) name(baselineSBP_combined, replace)
+
+
+
+
+
+
+# predicted SBP change stratified by race: 
+* First generate the margins
+margins treatment, at(baseline_SBP=(120(10)180)) over(race_black) atmeans predict(xb)
+
+* Corrected marginsplot command
+marginsplot,  title("Predicted BP Change by Race Groups")  by(race_black)  ytitle("Predicted Change in SBP (mmHg)", size(small))  xtitle("Baseline SBP (mmHg)", size(small))  ylabel(-20(5)5, angle(0)) xlabel(120(10)180, angle(0))  plot1opts(connect(direct) msymbol(O) mcolor(navy) lcolor(navy)) plot2opts(connect(direct) msymbol(T) mcolor(maroon) lcolor(maroon))  legend(rows(1) size(small)  order(1 "Thiazide" 2 "MRA") title("Treatment Type"))   yline(0, lpattern(dash) lcolor(gray)) scheme(s2color) name(baselineSBP_byrace, replace)
+
+
+
+
+
+## two ways interactions
+regress delta_SBP i.treatment##i.race_black i.RANDASSIGN##i.race_black i.RANDASSIGN##i.treatment med_pril_artan NUMBEROFDRUGS baseline_SBP med_olol bmi updated_age female SUB_CKD
+
+
+
+## two wasy interactions graphs
+* Set graph style
+set scheme s2color
+
+* Treatment by Race interaction plot
+margins race_black#treatment, at(RANDASSIGN=0) vsquish
+marginsplot, title("Predicted SBP Change by Treatment and Race", size(medium)) ytitle("Predicted Change in SBP") xlabel(0 "Control" 1 "Treatment", labsize(medium)) ylabel(, labsize(medium)) plot1opts(connect(direct) msymbol(O) mcolor(navy) lcolor(navy)) plot2opts(connect(direct) msymbol(T) mcolor(maroon) lcolor(maroon)) legend(order(1 "Non-Black" 2 "Black") rows(1) size(medium)) name(treatment_int, replace)
+
+* RANDASSIGN by Race interaction plot
+margins race_black#RANDASSIGN, at(treatment=0) vsquish
+marginsplot, title("Predicted SBP Change by RANDASSIGN and Race", size(medium)) ytitle("Predicted Change in SBP") xlabel(0 "Standard" 1 "Intensive", labsize(medium)) ylabel(, labsize(medium)) plot1opts(connect(direct) msymbol(O) mcolor(navy) lcolor(navy)) plot2opts(connect(direct) msymbol(T) mcolor(maroon) lcolor(maroon)) legend(order(1 "Non-Black" 2 "Black") rows(1) size(medium)) name(randassign_int, replace)
+
+* Combine plots
+graph combine treatment_int randassign_int, rows(1) xsize(10) ysize(4) title("Interaction Effects of Race with Treatment and RANDASSIGN", size(medium))
+
+
+
+
+
+
+# fixing potassium into the mode; 
+replace baseline_K = . in 1645
+regress delta_SBP i.treatment##i.race_black i.RANDASSIGN##i.race_black i.RANDASSIGN##i.treatment med_pril_artan NUMBEROFDRUGS baseline_SBP med_olol bmi updated_age female SUB_CKD 
+regress delta_SBP i.treatment##i.race_black i.RANDASSIGN##i.race_black i.RANDASSIGN##i.treatment med_pril_artan NUMBEROFDRUGS baseline_SBP med_olol bmi updated_age female SUB_CKD baseline_K
+bysort race_black: summarize baseline_K 
+regress delta_SBP i.treatment##i.race_black i.RANDASSIGN##i.race_black i.RANDASSIGN##i.treatment med_pril_artan NUMBEROFDRUGS baseline_SBP med_olol bmi updated_age female SUB_CKD i.race_black##c.baseline_K
+regress delta_SBP i.treatment##i.race_black i.RANDASSIGN##i.race_black i.RANDASSIGN##i.treatment med_pril_artan NUMBEROFDRUGS baseline_SBP med_olol bmi updated_age female SUB_CKD i.treatment##c.baseline_K
+rreg delta_SBP i.treatment##i.race_black i.RANDASSIGN##i.race_black i.RANDASSIGN##i.treatment med_pril_artan NUMBEROFDRUGS baseline_SBP med_olol bmi updated_age female SUB_CKD baseline_K
+sort k_tertile
+by k_tertile: regress delta_SBP i.treatment##i.race_black i.RANDASSIGN##i.race_black i.RANDASSIGN##i.treatment med_pril_artan NUMBEROFDRUGS baseline_SBP med_olol bmi updated_age female SUB_CKD
+regress delta_SBP i.treatment##i.race_black i.RANDASSIGN##i.race_black i.RANDASSIGN##i.treatment baseline_SBP bmi updated_age female SUB_CKD med_olol med_pril_artan NUMBEROFDRUGS med_thiazide
+regress delta_SBP i.treatment##i.race_black i.RANDASSIGN##i.race_black i.RANDASSIGN##i.treatment baseline_SBP bmi updated_age female SUB_CKD med_olol med_pril_artan NUMBEROFDRUGS med_thiazide
+regress delta_SBP i.treatment##i.race_black i.RANDASSIGN##i.race_black i.RANDASSIGN##i.treatment baseline_SBP bmi updated_age female SUB_CKD med_olol med_pril_artan NUMBEROFDRUGS med_thiazide baseline_K
+rreg delta_SBP i.treatment##i.race_black i.RANDASSIGN##i.race_black i.RANDASSIGN##i.treatment baseline_SBP bmi updated_age female SUB_CKD med_olol med_pril_artan NUMBEROFDRUGS med_thiazide baseline_K
+tab k_tertile
+summarize k_tertile
+tabstat baseline_K, by(k_tertile) statistics(min max mean)
+by k_tertile: regress delta_SBP i.treatment##i.race_black i.RANDASSIGN##i.race_black i.RANDASSIGN##i.treatment med_pril_artan NUMBEROFDRUGS baseline_SBP med_olol bmi updated_age female SUB_CKD
+
+
+
+
+
 
