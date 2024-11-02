@@ -167,5 +167,8 @@ by k_tertile: regress delta_SBP i.treatment##i.race_black i.RANDASSIGN##i.race_b
 
 
 
-
+# boxplot 
+graph box delta_SBP if k_tertile != . & treatment == 1, over(race_black) over(k_tertile) title("Distribution of SBP Change by Race and K+ Tertile in Treatment Group") ylabel(-20(5)20) legend(off)
+graph save "Graph" "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/k graph by race and SBP.gph"
+graph save "Graph" "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/k graph by race and SBP.gph", replace
 
