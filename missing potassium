@@ -1,0 +1,356 @@
+
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/intermediate.dta", clear
+distinct maskid
+gen MRA_use = 1 if mra_daystart!=.
+replace MRA_use = 0 if mra_daystart ==.
+gen thiazide_use = 1 if thiazide_daystart !=.
+replace thiazide+use = 0 if thiazide_daystart ==. 
+replace thiazide_use = 0 if thiazide_daystart ==. save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/intermediate.dta", replace
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/K_Na_Cret_GFR.dta"
+distinct maskid
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/labs.dta"
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/intermediate.dta"
+merge 1:m maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/labs.dta"
+sort maskid
+* Generate indicator for missingness in result_k
+gen missing_result_k = missing(result_k)
+regress missing_result_k thiazide_use mra_use
+regress missing_result_k thiazide_use MRA_use
+regress missing_result_k thiazide_use MRA_use result_creatr result_gfr
+tab missing_result_k thiazide_use, chi2
+regress missing_result_k result_creatr result_gfr
+regress missing_result_k result_creatr result_gfr MRA_use
+
+. merge 1:m maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/an
+> alysis/data/labs.dta"
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        75,944
+        from master                         0  (_merge==1)
+        from using                     75,944  (_merge==2)
+
+    matched                            20,053  (_merge==3)
+    -----------------------------------------
+
+. tab missing_result_k thiazide_use, chi2
+
+missing_re |     thiazide_use
+    sult_k |         0          1 |     Total
+-----------+----------------------+----------
+         0 |     3,845     16,162 |    20,007 
+         1 |        12         34 |        46 
+-----------+----------------------+----------
+     Total |     3,857     16,196 |    20,053 
+
+          Pearson chi2(1) =   1.3938   Pr = 0.238
+
+. 
+. regress missing_result_k result_creatr result_gfr
+
+      Source |       SS           df       MS      Number of obs   =    95,669
+-------------+----------------------------------   F(2, 95666)     =      0.05
+       Model |  .000011372         2  5.6859e-06   Prob > F        =    0.9471
+    Residual |  9.99894336    95,666  .000104519   R-squared       =    0.0000
+-------------+----------------------------------   Adj R-squared   =   -0.0000
+       Total |  9.99895473    95,668  .000104517   Root MSE        =    .01022
+
+-------------------------------------------------------------------------------
+missing_res~k |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+--------------+----------------------------------------------------------------
+result_creatr |   .0000356   .0001134     0.31   0.754    -.0001868    .0002579
+   result_gfr |   3.66e-07   2.25e-06     0.16   0.871    -4.05e-06    4.78e-06
+        _cons |   .0000394   .0002676     0.15   0.883    -.0004851    .0005639
+-------------------------------------------------------------------------------
+
+. regress missing_result_k result_creatr result_gfr MRA_use
+
+      Source |       SS           df       MS      Number of obs   =    20,001
+-------------+----------------------------------   F(3, 19997)     =      2.28
+       Model |   .00034214         3  .000114047   Prob > F        =    0.0771
+    Residual |  .999607862    19,997  .000049988   R-squared       =    0.0003
+-------------+----------------------------------   Adj R-squared   =    0.0002
+       Total |  .999950003    20,000  .000049998   Root MSE        =    .00707
+
+-------------------------------------------------------------------------------
+missing_res~k |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+--------------+----------------------------------------------------------------
+result_creatr |   .0000852   .0001634     0.52   0.602    -.0002352    .0004055
+   result_gfr |  -2.49e-06   3.28e-06    -0.76   0.449    -8.92e-06    3.95e-06
+      MRA_use |   .0002444   .0001272     1.92   0.055    -4.97e-06    .0004938
+        _cons |   .0000906   .0003851     0.24   0.814    -.0006643    .0008454
+-------------------------------------------------------------------------------
+
+.  gen missing_result_creat = missing(result_creatr)
+
+.  gen missing_result_egfr = missing(result_gfr)
+
+. tabstat missing_result_egfr MRA_use
+
+   stats |  missin~r   MRA_use
+---------+--------------------
+    mean |  .0034168  .1923403
+------------------------------
+
+. tab missing_result_creat thiazide_use, chi2
+
+missing_re |     thiazide_use
+sult_creat |         0          1 |     Total
+-----------+----------------------+----------
+         0 |     3,846     16,155 |    20,001 
+         1 |        11         41 |        52 
+-----------+----------------------+----------
+     Total |     3,857     16,196 |    20,053 
+
+          Pearson chi2(1) =   0.1237   Pr = 0.725
+
+. tab missing_result_gfr thiazide_use, chi2
+variable missing_result_gfr not found
+r(111);
+
+. tab missing_result_egfr thiazide_use, chi2
+
+missing_re |     thiazide_use
+ sult_egfr |         0          1 |     Total
+-----------+----------------------+----------
+         0 |     3,846     16,155 |    20,001 
+         1 |        11         41 |        52 
+-----------+----------------------+----------
+     Total |     3,857     16,196 |    20,053 
+
+          Pearson chi2(1) =   0.1237   Pr = 0.725
+
+
+
+
+
+Outliers
+. replace result_k = . in 95979
+(1 real change made, 1 to missing)
+
+. replace result_k = . in 95980
+(1 real change made, 1 to missing)
+
+. replace result_k = . in 95978
+(1 real change made, 1 to missing)
+
+
+maskid	result_k	result_creatr	result_gfr
+S21867	9	.94	77.49
+S23190	9.1	.97	55.12
+S29139	9.1	1.09	83.07
+S51408	9.2	.65	93.09
+S69547	9.3	1.66	36.25
+S59285	9.7	.86	110.76
+S34255	11.0	1.01	87.56
+S16858	15.3	.78	91.1
+
+
+I removed the ones with K of >=9 
+
+
+
+sort maskid days_k 
+* 2. Generate time difference
+by maskid: gen days_diff_k = days_k - days_k[_n-1] if _n > 1
+* 3. Create flag for imputed values
+gen is_imputed = 0
+gen imputation_method = "original"
+* 4. Perform LOCF within 30-day window
+by maskid: replace result_k = result_k[_n-1] if missing(result_k) & days_diff_k <= 90
+replace is_imputed = 1 if missing(result_k[_n-1]) & !missing(result_k)
+replace imputation_method = "LOCF" if is_imputed == 1
+* 5. Optional: Fill remaining gaps with patient-specific mean
+
+bysort maskid: egen patient_mean_k = mean(result_k)
+replace result_k = patient_mean_k if missing(result_k)
+replace imputation_method = "mean" if missing(result_k) & is_imputed == 0
+label var is_imputed "Flag for imputed values"
+label var imputation_method "Method used for imputation"
+label var days_diff "Days since last observation"
+tab imputation_method
+summ days_diff if is_imputed == 1, detail
+
+
+
+. tab imputation_method
+
+Method used |
+        for |
+ imputation |      Freq.     Percent        Cum.
+------------+-----------------------------------
+       LOCF |         22        0.02        0.02
+       mean |         17        0.02        0.04
+   original |     95,958       99.96      100.00
+------------+-----------------------------------
+      Total |     95,997      100.00
+
+. summ days_diff if is_imputed == 1, detail
+
+                 Days since last observation
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%           30             30
+ 5%           30             38
+10%           30             47       Obs                   4
+25%           34            191       Sum of Wgt.           4
+
+50%         42.5                      Mean               76.5
+                        Largest       Std. Dev.      76.64855
+75%          119             30
+90%          191             38       Variance           5875
+95%          191             47       Skewness       1.126416
+99%          191            191       Kurtosis        2.31146
+
+
+
+Now I do the same for serum creatinine 
+. sort maskid days_creatr 
+
+. by maskid: gen days_diff_creat = days_creatr- days_creatr[_n-1] if _n > 1
+(9,672 missing values generated)
+
+. * 3. Create flag for imputed values
+
+. gen is_imputed_creat = 0
+
+. gen imputation_method_creat = "original"
+
+. * 4. Perform LOCF within 30-day window
+
+. by maskid: replace result_creatr = result_creatr[_n-1] if missing(result_creatr) & days_diff_cr
+> eat <= 90
+(0 real changes made)
+
+. replace is_imputed_creat = 1 if missing(result_creatr[_n-1]) & !missing(result_creatr)
+(297 real changes made)
+
+. replace imputation_method_creat = "LOCF" if is_imputed_creat == 1
+(297 real changes made)
+
+. * 5. Optional: Fill remaining gaps with patient-specific mean
+
+. 
+. bysort maskid: egen patient_mean_creat = mean(result_creatr)
+(17 missing values generated)
+
+. replace result_creatr = patient_mean_creat if missing(result_creatr)
+(311 real changes made)
+
+. replace imputation_method_creat = "mean" if missing(result_creatr) & is_imputed_creat == 0
+(17 real changes made)
+
+. label var is_imputed_creat "Flag for imputed values"
+
+. label var imputation_method_creat "Method used for imputation"
+
+. label var days_diff_creat "Days since last observation"
+
+. tab imputation_method_creat
+
+Method used |
+        for |
+ imputation |      Freq.     Percent        Cum.
+------------+-----------------------------------
+       LOCF |        297        0.31        0.31
+       mean |         17        0.02        0.33
+   original |     95,683       99.67      100.00
+------------+-----------------------------------
+      Total |     95,997      100.00
+
+sort maskid days_creatr 
+
+by maskid: gen days_diff_gfr = days_creatr- days_creatr[_n-1] if _n > 1
+
+gen is_imputed_gfr = 0
+
+gen imputation_method_gfr = "original"
+
+
+by maskid: replace result_gfr = result_gfr[_n-1] if missing(result_gfr) & days_diff_gfr <= 90
+
+replace is_imputed_gfr= 1 if missing(result_gfr[_n-1]) & !missing(result_gfr)
+
+replace imputation_method_gfr = "LOCF" if is_imputed_gfr == 1
+
+bysort maskid: egen patient_mean_gfr = mean(result_gfr)
+replace result_gfr = patient_mean_gfr if missing(result_gfr)
+
+replace imputation_method_gfr = "mean" if missing(result_gfr) & is_imputed_gfr== 0
+label var is_imputed_gfr "Flag for imputed values"
+label var imputation_method_gfr "Method used for imputation"
+label var days_diff_gfr "Days since last observation"
+
+tab imputation_method_gfr
+
+
+
+
+
+
+
+tab _merge
+distinct maskid if _merge ==3
+gen k_baseline_day = mra_daystart - days_k
+gen k_post_day = mra_daystart - days_k
+replace k_baseline_day =. if k_baseline_day <0 
+replace k_post_day  =. if k_post_day  <= -90 | k_post_day >= -30 
+distinct maskid if k_baseline_day !=.
+gen k_baseline_thiazideday = thiazide_daystart - days_k
+gen k_post_thiazideday = thiazide_daystart - days_k
+replace k_baseline_thiazideday =. if k_baseline_thiazideday <0 
+replace k_post_thiazideday  =. if k_post_thiazideday  <= -90 | k_post_thiazideday >= -30 
+summarize k_baseline_day, detail
+browse maskid k_baseline_day mra_daystart 
+
+
+
+# First check min baseline day (the nearest to the start day of MRA) 
+bysort maskid: egen min_k_baseline_day = min(k_baseline_day) if !missing(k_baseline_day)
+gen baseline_K_MRA = .  
+bysort maskid: replace baseline_K_MRA = result_k if k_baseline_day == min_k_baseline_day &  !missing(k_baseline_day)
+bysort maskid: egen baseline_K_MRA_filled =  min(baseline_K_MRA)
+
+# do the same to get POST K 
+
+bysort maskid: egen max_k_post_day = max(k_post_day) if !missing(k_post_day)
+gen post_K_MRA = .  
+bysort maskid: replace post_K_MRA = result_k if k_post_day == max_k_post_day & !missing(k_post_day)
+bysort maskid: egen post_K_MRA_filled =  min(post_K_MRA)
+gen delta_k_mra = post_K_MRA_filled-baseline_K_MRA_filled
+
+
+
+Now do the same for THiazide
+bysort maskid: egen min_k_baseline_thiazideday = min(k_baseline_thiazideday) if !missing(k_baseline_thiazideday)
+gen baseline_K_thiazide = .  
+bysort maskid: replace baseline_K_thiazide = result_k if k_baseline_thiazideday == min_k_baseline_thiazideday &  !missing(k_baseline_thiazideday)
+bysort maskid: egen baseline_K_thiazide_filled =  min(baseline_K_thiazide)
+
+# do the same to get POST K 
+
+bysort maskid: egen max_k_post_thiazideday = max(k_post_thiazideday) if !missing(k_post_thiazideday)
+gen post_K_thiazide = .  
+bysort maskid: replace post_K_thiazide = result_k if k_post_thiazideday == max_k_post_thiazideday & !missing(k_post_thiazideday)
+bysort maskid: egen post_K_thiazide_filled =  min(post_K_thiazide)
+gen delta_k_thiazide = post_K_thiazide_filled-baseline_K_thiazide_filled
+
+
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/missing K,creat,gfr imputed with delta.dta"
+
+
+
+
+I trimmed the data to be combined w master
+browse maskid baseline_K_MRA_filled baseline_K_thiazide_filled delta_k_thiazide delta_k_mra post_K_thiazide_filled post_K_MRA_filled mra_daystart thiazide_daystart
+
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/trimmed K with delta .dta"
+
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/trimmed K with delta .dta"
+sort maskid quietly by maskid:  gen dup = cond(_N==1,0,_n)
+sort maskid 
+quietly by maskid:  gen dup = cond(_N==1,0,_n)
+tab dup
+drop if dup>1
+distinct maskid
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/trimmed K with delta .dta", replace
