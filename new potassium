@@ -1,0 +1,68 @@
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/intermediate.dta"
+merge 1:m maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/labs.dta"
+keep if _merge==3
+keep if thiazide_use == 1
+keep maskid visitcode thiazide_use thiazide_daystart result_na result_k result_creatr formdays days_k days_na days_creatr
+gen k_baseline_thiazideday = thiazide_daystart - days_k
+gen k_post_thiazideday = thiazide_daystart - days_k
+replace k_baseline_thiazideday =. if k_baseline_thiazideday <0 
+replace k_post_thiazideday  =. if k_post_thiazideday  <= -90 | k_post_thiazideday >= -30 
+bysort maskid: egen min_k_baseline_thiazideday = min(k_baseline_thiazideday) if !missing(k_baseline_thiazideday)
+gen baseline_K_thiazide = .  
+bysort maskid: replace baseline_K_thiazide = result_k if k_baseline_thiazideday == min_k_baseline_thiazideday &  !missing(k_baseline_thiazideday)
+bysort maskid: egen baseline_K_thiazide_filled =  min(baseline_K_thiazide)
+bysort maskid: egen max_k_post_thiazideday = max(k_post_thiazideday) if !missing(k_post_thiazideday)
+gen post_K_thiazide = .  
+bysort maskid: replace post_K_thiazide = result_k if k_post_thiazideday == max_k_post_thiazideday & !missing(k_post_thiazideday)
+bysort maskid: egen post_K_thiazide_filled =  min(post_K_thiazide)
+gen delta_k_thiazide = post_K_thiazide_filled-baseline_K_thiazide_filled
+drop if days_k > thiazide_daystart 
+rename formdays formdaysfrmintermediate
+gen formdays = days_k
+merge m:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/bp_med_log_v2.dta"
+sort maskid formdays
+drop if formdays> thiazide_daystart 
+egen thiazide_daystart_filled = min(thiazide_daystart)
+drop thiazide_daystart_filled
+bysort maskid: egen thiazide_daystart_filled = min(thiazide_daystart)
+bysort maskid: egen thiazide_use_filled = min(thiazide_use) 
+drop if thiazide_use_filled ==. 
+drop if formdays > thiazide_daystart_filled
+sort maskid formdays
+gen med_oxin = 0
+gen med_triam = 0
+gen med_olol = 0
+gen med_ipine_azem = 0
+gen med_mra = 0
+gen med_fur_bum_tors = 0
+gen med_hydral_azine = 0
+gen med_pril_artan = 0
+gen med_idine_clon = 0
+gen med_minoxi = 0 
+gen med_guanfacine = 0 
+* Check each medname variable for the specified patterns
+forvalues i = 1/10 {
+    replace med_oxin = 1 if regexm(lower(medname`i'), "(cardu|doxa|osin|oxin|hytrin|tera|tamsu|alfu)")
+replace med_triam = 0.0005 if regexm(lower(medname`i'), "(triam|amil)")
+    replace med_olol = 2 if regexm(lower(medname`i'), "(olol|metop|coreg|carv|lopre|topr|propa|nebi|nado|atenelol)")
+    replace med_ipine_azem = 5 if regexm(lower(medname`i'), "(ipine|azem|norv|vera|nife|proca|nicar|nefe|caduet)")
+replace med_minoxi = 10000 if regexm(lower(medname`i'), "(mino|xidil)")
+replace med_guanfacine = 0.01 if regexm(lower(medname`i'), "(guan)")
+    replace med_mra = 9 if regexm(lower(medname`i'), "(spir|eple|aldac|inspra)")
+    replace med_fur_bum_tors = 13 if regexm(lower(medname`i'), "(fur|bum|tors|inda|etha|demadex)")
+    replace med_hydral_azine = 0.5 if regexm(lower(medname`i'), "(hydral|azine)")
+    replace med_pril_artan = 1000 if regexm(lower(medname`i'), "(pril|artan|benic|vals|olme|edarbi|diovan|azil|trando|micardis|atacand)")
+    replace med_idine_clon = 100 if regexm(lower(medname`i'), "(idine|clon|cata)")
+}
+* Sum all medication categories into a single variable
+gen med_category = med_oxin + med_olol + med_ipine_azem + med_mra + med_fur_bum_tors + med_hydral_azine + med_pril_artan + med_idine_clon + med_minoxi + med_triam + med_guanfacine 
+*this works for combination meds as well- for example, atenolol, amlodipine/benazapril, will sum up to 1007 ( 1000 + 5 + 2)
+* Label the new variable
+label variable med_category "Sum of medication categories"
+* Clean up intermediate variables OR keep them for later 
+drop med_oxin med_olol med_ipine_azem med_mra med_fur_bum_tors med_hydral_azine med_pril_artan med_idine_clon med_minoxi  med_triam med_guanfacine 
+# patients from the lab data who doesnt have medication information got recorded as "O" for med_category 
+replace med_category =. if _merge == 1
+sort maskid k_baseline_thiazideday
+distinct maskid if baseline_K_thiazide !=. 
+distinct maskid if baseline_K_thiazide !=. & min_k_baseline_thiazideday >=60 
