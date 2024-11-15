@@ -59,11 +59,16 @@ label variable med_category "Sum of medication categories"
 drop med_oxin med_olol med_ipine_azem med_mra med_fur_bum_tors med_hydral_azine med_pril_artan med_idine_clon med_minoxi  med_triam med_guanfacine 
 browse maskid formdays baseline_K_thiazide_filled thiazide_daystart_filled med_category result_k days_k
 
-maskid	formdays	baseline_K_thiazide_filled	thiazide_daystart_filled	med_category	result_k	days_k	_merge
-S00007	0		2	1002			using only (2)
-S00007	1	5.1	2	1002	5.1	1	master only (1)
-S00007	29		2	1002			using only (2)
-S00007	58		2	1002			using only (2)
+maskid	result_k	days_k	baseline_K_thiazide_filled	formdays	thiazide_daystart_filled	med_category
+S00007				0	2	1002
+S00007	5.1	1	5.1	1	2	0
+S00109	4.3	0	4.1	0	36	1002
+S00109				14	36	1002
+S00109	4.1	31	4.1	31	36	1002
+S00122	4.3	0	4.3	0	0	1000
+S00128	4.2	0	4.2	0	0	0
+S00193	3.8	0	4.1	0	92	1005
+S00193	3.7	32	4.1	32	92	1014
 
 # Because the lab data does not have medication data (some of them might have lab checked on dates different from the bp_med_log formdays; 
 so I will take the med_category of the visit PRIOR to the lab data (one cell above) since they do not have medication visit on that lab day, 
@@ -119,9 +124,8 @@ bysort maskid (k_baseline_thiazideday): gen min_k_medcat = med_category[1] if k_
 bysort maskid: replace min_k_medcat = min_k_medcat[1]
 * Assign result_k to base_thiaz_K where med_category matches the min_k_medcat 
 * and matches the previous row's med_category
-by maskid: replace base_thiaz_K = baseline_K_thiazide_filled if med_category == min_k_medcat & med_category == med_category[_n-1]
-* Clean up
-drop min_k_medcat
+by maskid: replace base_thiaz_K = baseline_K_thiazide_filled if med_category == min_k_medcat & med_category == med_category[_n+1]
+
 distinct maskid if base_thiaz_K! =.
 distinct maskid if  baseline_K_thiazide_filled !=.
 replace base_thiaz_k == baseline_K_thiazide_filled if formdays == 0 
@@ -132,18 +136,14 @@ replace base_thiaz_K = baseline_K_thiazide_filled if visitcode == "RZ2"
 distinct maskid if base_thiaz_K! =.
 
 
-sort maskid formdays
-* Create flag for maskids with min_k_baseline_thiazideday > 60
 bysort maskid: gen flag_high_baseline = (min_k_baseline_thiazideday > 60& min_k_baseline_thiazideday!=.)
 distinct maskid if flag_high_baseline ==1
-* Get med_category at min k_baseline_thiazideday
-bysort maskid (k_baseline_thiazideday): gen min_k_medcat = med_category[1] if k_baseline_thiazideday == min_k_baseline_thiazideday
-bysort maskid: replace min_k_medcat = min_k_medcat[1]
-* Create indicator for whether med_category matches previous row
-by maskid: gen med_cat_match_prev = (med_category == med_category[_n-1])
-* List relevant information for flagged cases
-list maskid formdays k_baseline_thiazideday med_category min_k_medcat med_cat_match_prev if flag_high_baseline == 1 & !missing(k_baseline_thiazideday), sepby(maskid) noobs
-* Summarize findings
-tab flag_high_baseline, missing
-tab med_cat_match_prev if flag_high_baseline == 1 & !missing(k_baseline_thiazideday), missing
+sort maskid k_baseline_thiazideday
+by maskid: gen med_cat_first = med_category[1] if k_baseline_thiazideday != . & flag_high_baseline == 1
+by maskid: gen med_cat_second = med_category[2] if k_baseline_thiazideday != . & flag_high_baseline == 1
+by maskid: gen med_cat_match_first2 = (med_cat_first == med_cat_second) if flag_high_baseline == 1
+list maskid k_baseline_thiazideday med_category med_cat_match_first2 if flag_high_baseline == 1, sepby(maskid)
+
+
+
 
