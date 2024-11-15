@@ -24,6 +24,7 @@ sort maskid formdays
 bysort maskid: egen thiazide_daystart_filled = min(thiazide_daystart)
 bysort maskid: egen thiazide_use_filled = min(thiazide_use) 
 drop if thiazide_use_filled ==. 
+drop if formdays >thiazide_daystart_filled
 sort maskid formdays
 gen med_oxin = 0
 gen med_triam = 0
@@ -136,14 +137,259 @@ replace base_thiaz_K = baseline_K_thiazide_filled if visitcode == "RZ2"
 distinct maskid if base_thiaz_K! =.
 
 
-bysort maskid: gen flag_high_baseline = (min_k_baseline_thiazideday > 60& min_k_baseline_thiazideday!=.)
-distinct maskid if flag_high_baseline ==1
-sort maskid k_baseline_thiazideday
-by maskid: gen med_cat_first = med_category[1] if k_baseline_thiazideday != . & flag_high_baseline == 1
-by maskid: gen med_cat_second = med_category[2] if k_baseline_thiazideday != . & flag_high_baseline == 1
-by maskid: gen med_cat_match_first2 = (med_cat_first == med_cat_second) if flag_high_baseline == 1
-list maskid k_baseline_thiazideday med_category med_cat_match_first2 if flag_high_baseline == 1, sepby(maskid)
+
+* First sort by maskid and k_baseline_thiazdays to properly identify the minimum
+sort maskid k_baseline_thiazidedays
+
+* Create flag for high baseline cases
+bysort maskid: gen flag_high_baseline = (min_k_baseline_thiazidedays > 60 & min_k_baseline_thiazidedays != .)
+
+* Now identify med_cat_first when k_baseline_thiazidedays equals min_k_baseline_thiazidedays
+by maskid: gen med_cat_first = med_category if k_baseline_thiazidedays == min_k_baseline_thiazidedays & !missing(k_baseline_thiazidedays) & flag_high_baseline == 1
+
+* Fill this value for all observations of the same maskid
+by maskid: replace med_cat_first = med_cat_first[1]
+
+* Sort back to original order
+sort maskid formdays
+
+* Now get the med_category from the previous row
+by maskid: gen med_cat_second = med_category[_n-1] if k_baseline_thiazidedays == min_k_baseline_thiazidedays & !missing(k_baseline_thiazidedays)
+
+* Generate the match indicator
+gen med_cat_match_first2 = (med_cat_first == med_cat_second) if !missing(med_cat_first) & !missing(med_cat_second)
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+Do the same for MRA
+# get the data 
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/primaryall+nonoverlapmrathiazide.dta"
+drop _merge
+keep maskid thiazide_daystart mra_daystart formdays
+gen MRA_use = 1 if MRA_daystart!=. & thiazide_daystart ==. 
+replace MRA_use = 0 if MRA_use ==. 
+tab MRA_use
+
+
+merge 1:m maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/labs.dta"
+keep if _merge==3
+keep if MRA_use == 1
+keep maskid visitcode MRA_use MRA_daystart result_na result_k result_creatr formdays days_k days_na days_creatr
+gen k_baseline_MRAdays = MRA_daystart - days_k
+gen k_post_MRAdays = MRA_daystart - days_k
+replace k_baseline_MRAdays = . if k_baseline_MRAdays < 0
+replace k_post_MRAdays = . if k_post_MRAdays <= -90 | k_post_MRAdays >= -30
+bysort maskid: egen min_k_baseline_MRAdays = min(k_baseline_MRAdays) if !missing(k_baseline_MRAdays)
+gen baseline_K_MRA = .  
+bysort maskid: replace baseline_K_MRA = result_k if k_baseline_MRAdays == min_k_baseline_MRAdays & !missing(k_baseline_MRAdays)
+bysort maskid: egen baseline_K_MRA_filled = min(baseline_K_MRA)
+bysort maskid: egen max_k_post_MRAdays = max(k_post_MRAdays) if !missing(k_post_MRAdays)
+gen post_K_MRA = .  
+bysort maskid: replace post_K_MRA = result_k if k_post_MRAdays == max_k_post_MRAdays & !missing(k_post_MRAdays)
+bysort maskid: egen post_K_MRA_filled = min(post_K_MRA)
+gen delta_k_MRA = post_K_MRA_filled - baseline_K_MRA_filled
+drop if days_k > MRA_daystart
+rename formdays formdaysfrmintermediate
+gen formdays = days_k
+
+merge m:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/bp_med_log_v2.dta"
+sort maskid formdays
+bysort maskid: egen MRA_daystart_filled = min(MRA_daystart)
+bysort maskid: egen MRA_use_filled = min(MRA_use)
+drop if MRA_use_filled == .
+drop if formdays > MRA_daystart_filled
+
+
+sort maskid formdays
+gen med_oxin = 0
+gen med_triam = 0
+gen med_olol = 0
+gen med_ipine_azem = 0
+gen med_thia_chlo_hct = 0
+gen med_fur_bum_tors = 0
+gen med_hydral_azine = 0
+gen med_pril_artan = 0
+gen med_idine_clon = 0
+gen med_minoxi = 0 
+gen med_guanfacine = 0 
+
+* Check each medname variable for the specified patterns
+forvalues i = 1/10 {
+    replace med_oxin = 1 if regexm(lower(medname`i'), "(cardu|doxa|osin|oxin|hytrin|tera|tamsu|alfu)")
+	replace med_triam = 0.0005 if regexm(lower(medname`i'), "(triam|amil)")
+    replace med_olol = 2 if regexm(lower(medname`i'), "(olol|metop|coreg|carv|lopre|topr|propa|nebi|nado|atenelol)")
+    replace med_ipine_azem = 5 if regexm(lower(medname`i'), "(ipine|azem|norv|vera|nife|proca|nicar|nefe|caduet)")
+	replace med_minoxi = 10000 if regexm(lower(medname`i'), "(mino|xidil)")
+	replace med_guanfacine = 0.01 if regexm(lower(medname`i'), "(guan)")
+    replace med_thia_chlo_hct = 9 if regexm(lower(medname`i'), "(thia|chlo|chlorth|hyrdo|thiaz|azide|hyzaar|indap|metola|diurel|hctz|hygro|edarbyclor)")
+    replace med_fur_bum_tors = 13 if regexm(lower(medname`i'), "(fur|bum|tors|inda|etha|demadex|lasix)")
+    replace med_hydral_azine = 0.5 if regexm(lower(medname`i'), "(hydral|azine)")
+    replace med_pril_artan = 1000 if regexm(lower(medname`i'), "(pril|artan|benic|vals|olme|edarbi|diovan|azil|trando|micardis|atacand)")
+    replace med_idine_clon = 100 if regexm(lower(medname`i'), "(idine|clon|cata)")
+}
+* Sum all medication categories into a single variable
+gen med_category = med_oxin + med_olol + med_ipine_azem + med_thia_chlo_hct + med_fur_bum_tors + med_hydral_azine + med_pril_artan + med_idine_clon + med_minoxi + med_triam + med_guanfacine 
+
+
+* Label the new variable
+label variable med_category "Sum of medication categories"
+
+*this works for combination meds as well- for example, atenolol, amlodipine/benazapril, will sum up to 1007 ( 1000 + 5 + 2)
+
+* Clean up intermediate variables OR keep them for later 
+drop med_oxin med_olol med_ipine_azem med_fur_bum_tors med_hydral_azine med_pril_artan med_idine_clon med_minoxi  med_triam med_guanfacine 
+
+
+
+
+replace med_category =. if _merge == 1
+
+* Sort data by maskid and formdays to ensure correct ordering
+sort maskid formdays
+
+* Create a temporary variable to identify previous valid med_category
+by maskid: gen temp_med = med_category[_n-1] if _merge == 1 & missing(med_category)
+
+* Replace missing med_category with previous value if conditions are met
+replace med_category = temp_med if _merge == 1 & missing(med_category)
+
+* Clean up
+drop temp_med
+
+. summarize min_k_baseline_MRAday
+
+ summarize min_k_baseline_MRAday
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+min_k_base~s |      1,604    46.39277    56.53109          0        456
+
+
+. summarize min_k_baseline_MRAdays, detail
+
+                   min_k_baseline_MRAdays
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%            0              0
+ 5%            0              0
+10%            0              0       Obs               1,604
+25%            0              0       Sum of Wgt.       1,604
+
+50%           30                      Mean           46.39277
+                        Largest       Std. Dev.      56.53109
+75%           90            456
+90%          113            456       Variance       3195.765
+95%          142            456       Skewness       2.023163
+99%          216            456       Kurtosis       11.07765
+
+
+
+
+* First, ensure proper sorting
+sort maskid formdays
+* Generate base_MRA_K as missing
+gen base_MRA_K = .
+* Identify med_category for minimum k_baseline_MRAdays
+* with this sprt by maskid & k_baseline_MRAdays
+bysort maskid (k_baseline_MRAdays): gen min_k_medcat = med_category[1] if k_baseline_MRAdays == min_k_baseline_MRAdays & !missing(k_baseline_MRAdays)
+* Fill min_k_medcat for all observations of same maskid
+bysort maskid: replace min_k_medcat = min_k_medcat[1]
+* Create variable to check if med_category matches with row above
+* with this sort by formdays because I need to get one row above when the K was checked, to compare any medication changed
+and that one row above is either from lab data or bp_med_log data
+bysort maskid (formdays): gen med_cat_prev = med_category[_n-1] if k_baseline_MRAdays == min_k_baseline_MRAdays & !missing(k_baseline_MRAdays)
+
+* Only assign base_MRA_K if med_category at min k_baseline_MRAdays matches previous row
+by maskid: replace base_MRA_K = baseline_K_MRA_filled if k_baseline_MRAdays == min_k_baseline_MRAdays & med_category == med_cat_prev
+
+* Create flag for cases where k_baseline_MRAdays equals min_k_baseline_MRAdays but med_category differs from row above
+gen diff_med_flag = 0
+
+* Flag cases where k_baseline_MRAdays equals min but med_category differs from previous row
+replace diff_med_flag = 1 if k_baseline_MRAdays == min_k_baseline_MRAdays & med_category != med_cat_prev & !missing(k_baseline_MRAdays)
+
+. distinct maskid if base_MRA_K!=.
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |        258        258
+
+
+
+maskid	MRA_daystart	result_k	days_k	k_baseline_MRAdays	min_k_baseline_MRAdays	baseline_K_MRA_filled	formdays	med_category	base_MRA_K	min_k_medcat	med_cat_prev	diff_med_flag
+S09704	1	3.1	0	1	1	3.1	0	1009		1009		1
+S09862	175	3.2	0	175	1	3.2	0	14		14		0
+S09862	175	3.2	28	147	1	3.2	28	14		14		0
+S09862	175	3.5	49	126	1	3.2	49	14		14		0
+S09862	175	2.7	89	86	1	3.2	89	14		14		0
+
+if the patient started has K checked on the first day there is no labs to compare to 
+use the K directly as baseline
+
+. replace base_MRA_K = result_k if result_k!=. & visitcode=="RZ1" & k_baseline_MRAdays == min_k_baseline_MRAdays & med_category != med_cat_prev & !missing(k_baseline_MRAdays)
+(29 real changes made)
+
+. replace base_MRA_K = result_k if result_k!=. & visitcode=="RZ2" & k_baseline_MRAdays == min_k_baseline_MRAdays & med_category != med_cat_prev & !missing(k_baseline_MRAdays)
+(0 real changes made)
+
+. distinct maskid if base_MRA_K!=.
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |        287        287
+
+
+
+
+
+bysort maskid: egen base_K_MRA_filled = min(base_MRA_K) 
+* First sort by maskid and k_baseline_MRAdays to properly identify the minimum
+sort maskid k_baseline_MRAdays
+
+
+
+
+* Create flag for high baseline cases
+bysort maskid: gen flag_high_baseline = (min_k_baseline_MRAdays > 60 & min_k_baseline_MRAdays != .)
+
+
+. distinct maskid if flag_high_baseline == 1
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |        504         90
+
+
+*** Checked individually - i dont think these codes are necessary 
+* Now identify med_cat_first when k_baseline_MRAdays equals min_k_baseline_MRAdays
+by maskid: gen med_cat_first = med_category if k_baseline_MRAdays == min_k_baseline_MRAdays & !missing(k_baseline_MRAdays) & flag_high_baseline == 1
+* Fill this value for all observations of the same maskid
+by maskid: replace med_cat_first = med_cat_first[1]
+* Sort back to original order
+sort maskid formdays
+* Now get the med_category from the previous row
+by maskid: gen med_cat_second = med_category[_n-1] if k_baseline_MRAdays == min_k_baseline_MRAdays & !missing(k_baseline_MRAdays)
+* Generate the match indicator
+gen med_cat_match_first2 = (med_cat_first == med_cat_second) if !missing(med_cat_first) & !missing(med_cat_second)
+. distinct	maskid if med_cat_match_first2	==	0 
+
+	Observations
+	total   distinct
+	
+maskid	18         18
 
