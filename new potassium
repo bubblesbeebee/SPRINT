@@ -228,7 +228,7 @@ save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from 
 sort maskid
 quietly by maskid:  gen dup = cond(_N==1,0,_n)
 tab dup
-drop if dup >2
+drop if dup >1
 distinct maskid 
 save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/filtered_potassium_MRA 11.15.dta", replace
 
@@ -401,5 +401,11 @@ distinct maskid if base_K_thiaz_filled !=.
         |      total   distinct
 --------+----------------------
  maskid |       4559       1489
+
+sort maskid
+quietly by maskid:  gen dup = cond(_N==1,0,_n)
+tab dup
+drop if dup >1
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/filtered_potassium_Thiaz 11.15.dta"
 
 
