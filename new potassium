@@ -1,179 +1,4 @@
-use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/intermediate.dta"
-merge 1:m maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/labs.dta"
-keep if _merge==3
-keep if thiazide_use == 1
-keep maskid visitcode thiazide_use thiazide_daystart result_na result_k result_creatr formdays days_k days_na days_creatr
-gen k_baseline_thiazideday = thiazide_daystart - days_k
-gen k_post_thiazideday = thiazide_daystart - days_k
-replace k_baseline_thiazideday =. if k_baseline_thiazideday <0 
-replace k_post_thiazideday  =. if k_post_thiazideday  <= -90 | k_post_thiazideday >= -30 
-bysort maskid: egen min_k_baseline_thiazideday = min(k_baseline_thiazideday) if !missing(k_baseline_thiazideday)
-gen baseline_K_thiazide = .  
-bysort maskid: replace baseline_K_thiazide = result_k if k_baseline_thiazideday == min_k_baseline_thiazideday &  !missing(k_baseline_thiazideday)
-bysort maskid: egen baseline_K_thiazide_filled =  min(baseline_K_thiazide)
-bysort maskid: egen max_k_post_thiazideday = max(k_post_thiazideday) if !missing(k_post_thiazideday)
-gen post_K_thiazide = .  
-bysort maskid: replace post_K_thiazide = result_k if k_post_thiazideday == max_k_post_thiazideday & !missing(k_post_thiazideday)
-bysort maskid: egen post_K_thiazide_filled =  min(post_K_thiazide)
-gen delta_k_thiazide = post_K_thiazide_filled-baseline_K_thiazide_filled
-drop if days_k > thiazide_daystart 
-rename formdays formdaysfrmintermediate
-gen formdays = days_k
-merge m:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/bp_med_log_v2.dta"
-sort maskid formdays
-bysort maskid: egen thiazide_daystart_filled = min(thiazide_daystart)
-bysort maskid: egen thiazide_use_filled = min(thiazide_use) 
-drop if thiazide_use_filled ==. 
-drop if formdays >thiazide_daystart_filled
-sort maskid formdays
-gen med_oxin = 0
-gen med_triam = 0
-gen med_olol = 0
-gen med_ipine_azem = 0
-gen med_mra = 0
-gen med_fur_bum_tors = 0
-gen med_hydral_azine = 0
-gen med_pril_artan = 0
-gen med_idine_clon = 0
-gen med_minoxi = 0 
-gen med_guanfacine = 0 
-* Check each medname variable for the specified patterns
-forvalues i = 1/10 {
-    replace med_oxin = 1 if regexm(lower(medname`i'), "(cardu|doxa|osin|oxin|hytrin|tera|tamsu|alfu)")
-replace med_triam = 0.0005 if regexm(lower(medname`i'), "(triam|amil)")
-    replace med_olol = 2 if regexm(lower(medname`i'), "(olol|metop|coreg|carv|lopre|topr|propa|nebi|nado|atenelol)")
-    replace med_ipine_azem = 5 if regexm(lower(medname`i'), "(ipine|azem|norv|vera|nife|proca|nicar|nefe|caduet)")
-replace med_minoxi = 10000 if regexm(lower(medname`i'), "(mino|xidil)")
-replace med_guanfacine = 0.01 if regexm(lower(medname`i'), "(guan)")
-    replace med_mra = 9 if regexm(lower(medname`i'), "(spir|eple|aldac|inspra)")
-    replace med_fur_bum_tors = 13 if regexm(lower(medname`i'), "(fur|bum|tors|inda|etha|demadex)")
-    replace med_hydral_azine = 0.5 if regexm(lower(medname`i'), "(hydral|azine)")
-    replace med_pril_artan = 1000 if regexm(lower(medname`i'), "(pril|artan|benic|vals|olme|edarbi|diovan|azil|trando|micardis|atacand)")
-    replace med_idine_clon = 100 if regexm(lower(medname`i'), "(idine|clon|cata)")
-}
-* Sum all medication categories into a single variable
-gen med_category = med_oxin + med_olol + med_ipine_azem + med_mra + med_fur_bum_tors + med_hydral_azine + med_pril_artan + med_idine_clon + med_minoxi + med_triam + med_guanfacine 
-*this works for combination meds as well- for example, atenolol, amlodipine/benazapril, will sum up to 1007 ( 1000 + 5 + 2)
-* Label the new variable
-label variable med_category "Sum of medication categories"
-* Clean up intermediate variables OR keep them for later 
-drop med_oxin med_olol med_ipine_azem med_mra med_fur_bum_tors med_hydral_azine med_pril_artan med_idine_clon med_minoxi  med_triam med_guanfacine 
-browse maskid formdays baseline_K_thiazide_filled thiazide_daystart_filled med_category result_k days_k
-
-maskid	result_k	days_k	baseline_K_thiazide_filled	formdays	thiazide_daystart_filled	med_category
-S00007				0	2	1002
-S00007	5.1	1	5.1	1	2	0
-S00109	4.3	0	4.1	0	36	1002
-S00109				14	36	1002
-S00109	4.1	31	4.1	31	36	1002
-S00122	4.3	0	4.3	0	0	1000
-S00128	4.2	0	4.2	0	0	0
-S00193	3.8	0	4.1	0	92	1005
-S00193	3.7	32	4.1	32	92	1014
-
-# Because the lab data does not have medication data (some of them might have lab checked on dates different from the bp_med_log formdays; 
-so I will take the med_category of the visit PRIOR to the lab data (one cell above) since they do not have medication visit on that lab day, 
-and their next medication visit day is formdays 29 for example. 
-
-replace med_category =. if _merge == 1
-
-
-* Sort data by maskid and formdays to ensure correct ordering
-sort maskid formdays
-
-* Create a temporary variable to identify previous valid med_category
-by maskid: gen temp_med = med_category[_n-1] if _merge == 1 & missing(med_category)
-
-* Replace missing med_category with previous value if conditions are met
-replace med_category = temp_med if _merge == 1 & missing(med_category)
-
-* Clean up
-drop temp_med
-
-. summarize min_k_baseline_thiazideday
-
-Variable         Obs        Mean    Std. Dev.	Min	Max
-		
-min_k_base~y       3,217    26.26298    43.67209	0	224
-
-. summarize min_k_baseline_thiazideday, detail
-
-min_k_baseline_thiazideday
-	
-Percentiles      Smallest
-1%            0              0
-5%            0              0
-10%            0              0       Obs	3,217
-25%            0              0       Sum of Wgt.	3,217
-
-50%            1                      Mean	26.26298
-Largest       Std. Dev.	43.67209
-75%           34            224
-90%           95            224       Variance	1907.251
-95%          120            224       Skewness	1.745547
-99%          169            224       Kurtosis	5.241527
-
-
-
-* First sort the data to ensure proper ordering
-sort maskid formdays
-* Create base_thiaz_K variable
-gen base_thiaz_K = .
-* Get the med_category value associated with the minimum k_baseline_thiazideday for each maskid
-bysort maskid (k_baseline_thiazideday): gen min_k_medcat = med_category[1] if k_baseline_thiazideday == min_k_baseline_thiazideday
-* Fill this value for all observations of the same maskid
-bysort maskid: replace min_k_medcat = min_k_medcat[1]
-* Assign result_k to base_thiaz_K where med_category matches the min_k_medcat 
-* and matches the previous row's med_category
-by maskid: replace base_thiaz_K = baseline_K_thiazide_filled if med_category == min_k_medcat & med_category == med_category[_n+1]
-
-distinct maskid if base_thiaz_K! =.
-distinct maskid if  baseline_K_thiazide_filled !=.
-replace base_thiaz_k == baseline_K_thiazide_filled if formdays == 0 
-replace base_thiaz_K == baseline_K_thiazide_filled if formdays == 0 
-replace base_thiaz_K = baseline_K_thiazide_filled if formdays == 0 
-replace base_thiaz_K = baseline_K_thiazide_filled if visitcode == "RZ1"
-replace base_thiaz_K = baseline_K_thiazide_filled if visitcode == "RZ2"
-distinct maskid if base_thiaz_K! =.
-
-
-
-* First sort by maskid and k_baseline_thiazdays to properly identify the minimum
-sort maskid k_baseline_thiazidedays
-
-* Create flag for high baseline cases
-bysort maskid: gen flag_high_baseline = (min_k_baseline_thiazidedays > 60 & min_k_baseline_thiazidedays != .)
-
-* Now identify med_cat_first when k_baseline_thiazidedays equals min_k_baseline_thiazidedays
-by maskid: gen med_cat_first = med_category if k_baseline_thiazidedays == min_k_baseline_thiazidedays & !missing(k_baseline_thiazidedays) & flag_high_baseline == 1
-
-* Fill this value for all observations of the same maskid
-by maskid: replace med_cat_first = med_cat_first[1]
-
-* Sort back to original order
-sort maskid formdays
-
-* Now get the med_category from the previous row
-by maskid: gen med_cat_second = med_category[_n-1] if k_baseline_thiazidedays == min_k_baseline_thiazidedays & !missing(k_baseline_thiazidedays)
-
-* Generate the match indicator
-gen med_cat_match_first2 = (med_cat_first == med_cat_second) if !missing(med_cat_first) & !missing(med_cat_second)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Do the same for MRA
+# MRA
 # get the data 
 use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/primaryall+nonoverlapmrathiazide.dta"
 drop _merge
@@ -406,3 +231,175 @@ tab dup
 drop if dup >2
 distinct maskid 
 save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/filtered_potassium_MRA 11.15.dta", replace
+
+
+
+
+
+
+
+THIAZIDE
+
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/primaryall+nonoverlapmrathiazide.dta", clear
+drop _merge
+keep maskid thiazide_daystart mra_daystart formdays
+gen thiaz_use = 1 if thiazide_daystart != . & mra_daystart == .
+replace thiaz_use = 0 if thiaz_use == .
+tab thiaz_use
+merge 1:m maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/labs.dta"
+keep if _merge == 3
+keep if thiaz_use == 1
+keep maskid visitcode thiaz_use thiazide_daystart result_na result_k result_creatr formdays days_k days_na days_creatr
+gen k_baseline_thiazdays = thiazide_daystart - days_k
+gen k_post_thiazdays = thiazide_daystart - days_k
+replace k_baseline_thiazdays = . if k_baseline_thiazdays < 0
+replace k_post_thiazdays = . if k_post_thiazdays <= -90 | k_post_thiazdays >= -30
+bysort maskid: egen min_k_baseline_thiazdays = min(k_baseline_thiazdays) if !missing(k_baseline_thiazdays)
+gen baseline_K_thiaz = .  
+bysort maskid: replace baseline_K_thiaz = result_k if k_baseline_thiazdays == min_k_baseline_thiazdays & !missing(k_baseline_thiazdays)
+bysort maskid: egen baseline_K_thiaz_filled = min(baseline_K_thiaz)
+bysort maskid: egen max_k_post_thiazdays = max(k_post_thiazdays) if !missing(k_post_thiazdays)
+gen post_K_thiaz = .  
+bysort maskid: replace post_K_thiaz = result_k if k_post_thiazdays == max_k_post_thiazdays & !missing(k_post_thiazdays)
+bysort maskid: egen post_K_thiaz_filled = min(post_K_thiaz)
+gen delta_k_thiaz = post_K_thiaz_filled - baseline_K_thiaz_filled
+drop if days_k > thiazide_daystart
+rename formdays formdaysfrmintermediate
+gen formdays = days_k
+merge m:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/bp_med_log_v2.dta"
+sort maskid formdays
+bysort maskid: egen thiaz_daystart_filled = min(thiazide_daystart)
+bysort maskid: egen thiaz_use_filled = min(thiaz_use)
+drop if thiaz_use_filled == .
+drop if formdays > thiaz_daystart_filled
+sort maskid formdays
+gen med_oxin = 0
+gen med_triam = 0
+gen med_olol = 0
+gen med_ipine_azem = 0
+gen med_mra = 0
+gen med_fur_bum_tors = 0
+gen med_hydral_azine = 0
+gen med_pril_artan = 0
+gen med_idine_clon = 0
+gen med_minoxi = 0 
+gen med_guanfacine = 0 
+* Check each medname variable for the specified patterns
+forvalues i = 1/10 {
+    replace med_oxin = 1 if regexm(lower(medname`i'), "(cardu|doxa|osin|oxin|hytrin|tera|tamsu|alfu)")
+replace med_triam = 0.0005 if regexm(lower(medname`i'), "(triam|amil)")
+    replace med_olol = 2 if regexm(lower(medname`i'), "(olol|metop|coreg|carv|lopre|topr|propa|nebi|nado|atenelol)")
+    replace med_ipine_azem = 5 if regexm(lower(medname`i'), "(ipine|azem|norv|vera|nife|proca|nicar|nefe|caduet)")
+replace med_minoxi = 10000 if regexm(lower(medname`i'), "(mino|xidil)")
+replace med_guanfacine = 0.01 if regexm(lower(medname`i'), "(guan)")
+    replace med_mra = 9 if regexm(lower(medname`i'), "(spir|eple|aldac|inspra)")
+    replace med_fur_bum_tors = 13 if regexm(lower(medname`i'), "(fur|bum|tors|inda|etha|demadex)")
+    replace med_hydral_azine = 0.5 if regexm(lower(medname`i'), "(hydral|azine)")
+    replace med_pril_artan = 1000 if regexm(lower(medname`i'), "(pril|artan|benic|vals|olme|edarbi|diovan|azil|trando|micardis|atacand)")
+    replace med_idine_clon = 100 if regexm(lower(medname`i'), "(idine|clon|cata)")
+}
+* Sum all medication categories into a single variable
+gen med_category = med_oxin + med_olol + med_ipine_azem + med_mra + med_fur_bum_tors + med_hydral_azine + med_pril_artan + med_idine_clon + med_minoxi + med_triam + med_guanfacine 
+*this works for combination meds as well- for example, atenolol, amlodipine/benazapril, will sum up to 1007 ( 1000 + 5 + 2)
+* Label the new variable
+label variable med_category "Sum of medication categories"
+* Clean up intermediate variables OR keep them for later 
+drop med_oxin med_olol med_ipine_azem med_mra med_fur_bum_tors med_hydral_azine med_pril_artan med_idine_clon med_minoxi  med_triam med_guanfacine 
+replace med_category =. if _merge == 1
+* Sort data by maskid and formdays to ensure correct ordering
+sort maskid formdays
+* Create a temporary variable to identify previous valid med_category
+by maskid: gen temp_med = med_category[_n-1] if _merge == 1 & missing(med_category)
+* Replace missing med_category with previous value if conditions are met
+replace med_category = temp_med if _merge == 1 & missing(med_category)
+* Clean up
+drop temp_med
+summarize min_k_baseline_thiazday
+
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+min_k_base~s |      3,217    26.26298    43.67209          0        224
+
+
+summarize min_k_baseline_thiazdays, detail
+
+
+                  min_k_baseline_thiazdays
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%            0              0
+ 5%            0              0
+10%            0              0       Obs               3,217
+25%            0              0       Sum of Wgt.       3,217
+
+50%            1                      Mean           26.26298
+                        Largest       Std. Dev.      43.67209
+75%           34            224
+90%           95            224       Variance       1907.251
+95%          120            224       Skewness       1.745547
+99%          169            224       Kurtosis       5.241527
+
+
+* First, ensure proper sorting
+sort maskid formdays
+* Generate base_thiaz_K as missing
+gen base_thiaz_K = .
+* Identify med_category for minimum k_baseline_thiazdays
+* Sort by maskid & k_baseline_thiazdays
+bysort maskid (k_baseline_thiazdays): gen min_k_medcat = med_category[1] if k_baseline_thiazdays == min_k_baseline_thiazdays & !missing(k_baseline_thiazdays)
+* Fill min_k_medcat for all observations of same maskid
+bysort maskid: replace min_k_medcat = min_k_medcat[1]
+* Create variable to check if med_category matches with row above
+* Sort by formdays to compare with the previous row when the K was checked
+bysort maskid (formdays): gen med_cat_prev = med_category[_n-1] if k_baseline_thiazdays == min_k_baseline_thiazdays & !missing(k_baseline_thiazdays)
+* Only assign base_thiaz_K if med_category at min k_baseline_thiazdays matches previous row
+by maskid: replace base_thiaz_K = baseline_K_thiaz_filled if k_baseline_thiazdays == min_k_baseline_thiazdays & med_category == med_cat_prev
+* Create flag for cases where k_baseline_thiazdays equals min_k_baseline_thiazdays but med_category differs from row above
+gen diff_med_flag = 0
+* Flag cases where k_baseline_thiazdays equals min but med_category differs from previous row
+replace diff_med_flag = 1 if k_baseline_thiazdays == min_k_baseline_thiazdays & med_category != med_cat_prev & !missing(k_baseline_thiazdays)
+* Display distinct maskid if base_thiaz_K is not missing
+distinct maskid if base_thiaz_K != .
+
+. distinct maskid if base_thiaz_K != .
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |        653        647
+
+* Replace base_thiaz_K with result_k under specific conditions
+replace base_thiaz_K = result_k if result_k != . & visitcode == "RZ1" & k_baseline_thiazdays == min_k_baseline_thiazdays & med_category != med_cat_prev & !missing(k_baseline_thiazdays)
+replace base_thiaz_K = result_k if result_k != . & visitcode == "RZ2" & k_baseline_thiazdays == min_k_baseline_thiazdays & med_category != med_cat_prev & !missing(k_baseline_thiazdays)
+* Generate a variable to fill baseline K values for thiaz
+bysort maskid: egen base_K_thiaz_filled = min(base_thiaz_K)
+* First, sort by maskid and k_baseline_thiazdays to properly identify the minimum
+sort maskid k_baseline_thiazdays
+* Create flag for high baseline cases
+bysort maskid: gen flag_high_baseline = (min_k_baseline_thiazdays > 60 & min_k_baseline_thiazdays != .)
+* Display distinct maskid for cases with high baseline
+distinct maskid if flag_high_baseline == 1
+
+. distinct maskid if flag_high_baseline == 1
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |        627        120
+
+* Generate new delta_K for thiaz if baseline and post values are not missing
+gen new_delta_K = base_K_thiaz_filled - post_K_thiaz_filled if base_K_thiaz_filled != . & post_K_thiaz_filled != .
+* Fill the maximum value of new_delta_K for each maskid
+bysort maskid: egen delta_K_thiaz_filled = max(new_delta_K)
+distinct maskid if base_K_thiaz_filled !=.
+
+
+. distinct maskid if base_K_thiaz_filled !=.
+
+        |        Observations
+        |      total   distinct
+--------+----------------------
+ maskid |       4559       1489
+
+
