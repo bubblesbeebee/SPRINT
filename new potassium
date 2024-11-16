@@ -393,3 +393,16 @@ gen med_cat_match_first2 = (med_cat_first == med_cat_second) if !missing(med_cat
 	
 maskid	18         18
 
+
+gen new_delta_K = base_K_MRA_filled - post_K_MRA_filled if base_K_MRA_filled !=. & post_K_MRA_filled !=.
+bysort maskid: egen delta_K_MRA_filled = max(new_delta_K)
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/new_pot_mra.dta", replace
+
+
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/filtered_potassium_MRA 11.15.dta"
+sort maskid
+quietly by maskid:  gen dup = cond(_N==1,0,_n)
+tab dup
+drop if dup >2
+distinct maskid 
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/filtered_potassium_MRA 11.15.dta", replace
