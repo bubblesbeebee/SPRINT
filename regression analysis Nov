@@ -1,0 +1,145 @@
+# from the potassium file
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/filtered_potassium_Thiaz 11.15.dta", replace
+
+append using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/filtered_potassium_MRA 11.15.dta"
+
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/filtered_potassium_Thiaz_merged_MRA_11.15.dta"
+
+# then clean my existing master data 
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/potassium filtered w non overlap data 9.14.dta"
+
+drop k_tertile k_spline2 k_spline1 delta_K days_k day_K_prior_thiazide day_K_prior_mra day_K_post_thiazide day_K_post_mra baseline_K
+drop _est_k3 _est_k2 _est_k1 K avg_K_post_mra_filled30 
+drop baseline_K_MRA_filled baseline_K_thiazide_filled delta_k_thiazide delta_k_mra post_K_thiazide_filled post_K_MRA_filled 
+drop new_baseline_K freq1 freq2 freq3 freq4 freq5 freq6 freq7 freq8 freq9 freq10 dup _merge _est_q75 _est_q50 _est_q25 _est_model2 _est_model1 units1 units2 units3 units4 units5 units6 units7 units8 units9 units10 quartile pctmeds
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/potassium filtered w non overlap data 9.14.dta", replace
+
+# use my potassium file 
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/filtered_potassium_Thiaz_merged_MRA_11.15.dta"
+tab dup
+
+# label them so i know they are from the potassium file 
+label variable maskid "Masked ID of the participant"
+label variable base_K_thiaz_filled "Baseline potassium before thiazide prescription"
+label variable baseline_K_thiaz_filled "Baseline potassium for thiazide group"
+label variable delta_K_thiaz_filled "Change in potassium after thiazide prescription filled"
+label variable post_K_thiaz_filled "Post-treatment potassium after thiazide prescription"
+label variable dup "Duplicate indicator"
+label variable post_K_MRA_filled "Post-treatment potassium after MRA prescription"
+label variable delta_k_MRA "Change in potassium after MRA prescription filled"
+label variable base_K_MRA_filled "Baseline potassium before MRA prescription filled"
+drop dup 
+
+merge 1:1 maskid using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/potassium filtered w non overlap data 9.14.dta"
+
+# regression analysis 
+regress mra_delta_SBP bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled
+bysort RANDASSIGN: regress mra_delta_SBP bmi updated_age female race_black SUB_CKD CVDHISTORY new_first_sbp_avg_filled_mra base_K_MRA_filled
+regress mra_delta_SBP bmi updated_age female##race_black SUB_CKD RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled
+
+regress mra_delta_SBP bmi updated_age female SUB_CKD race_black##RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled
+regress thiazide_delta_SBP bmi updated_age female SUB_CKD race_black RANDASSIGN new_first_sbpavgfilledthiazide base_K_thiaz_filled 
+regress thiazide_delta_SBP bmi updated_age female SUB_CKD race_black CVDHISTORY RANDASSIGN new_first_sbpavgfilledthiazide base_K_thiaz_filled 
+bysort RANDASSIGN: regress thiazide_delta_SBP bmi updated_age female SUB_CKD race_black CVDHISTORY new_first_sbpavgfilledthiazide base_K_thiaz_filled 
+
+# create logistic regression 
+summarize thiazide_delta_SBP, detail
+generate thiazide_binary = 0
+replace thiazide_binary = 1 if thiazide_delta_SBP <= -14.5
+replace thiazide_binary = . if missing(thiazide_delta_SBP)
+summarize mra_delta_SBP, detail 
+generate mra_binary = 0
+replace mra_binary = 1 if mra_delta_SBP <= -10.8
+replace mra_binary = . if missing(mra_delta_SBP)
+logit thiazide_binary bmi updated_age female SUB_CKD race_black CVDHISTORY RANDASSIGN new_first_sbpavgfilledthiazide base_K_thiaz_filled
+estat gof
+
+# quantile regression 
+qreg thiazide_delta_SBP bmi updated_age female SUB_CKD race_black CVDHISTORY RANDASSIGN new_first_sbpavgfilledthiazide base_K_thiaz_filled, vce(robust)
+qreg thiazide_delta_SBP bmi updated_age female SUB_CKD race_black CVDHISTORY RANDASSIGN new_first_sbpavgfilledthiazide base_K_thiaz_filled
+qreg thiazide_delta_SBP bmi updated_age female SUB_CKD race_black CVDHISTORY RANDASSIGN new_first_sbpavgfilledthiazide base_K_thiaz_filled, quantile(0.25)
+qreg thiazide_delta_SBP bmi updated_age female SUB_CKD race_black CVDHISTORY RANDASSIGN new_first_sbpavgfilledthiazide base_K_thiaz_filled, quantile(0.50)
+qreg thiazide_delta_SBP bmi updated_age female SUB_CKD race_black CVDHISTORY RANDASSIGN new_first_sbpavgfilledthiazide base_K_thiaz_filled, quantile(0.75)
+predict res, residuals
+tabstat res
+summarize res, detail
+logit mra_binary bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled
+estat gof
+qreg mra_delta_SBP bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled
+qreg mra_delta_SBP bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled, quantile (0.25) 
+qreg mra_delta_SBP bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled, quantile (0.50) 
+qreg mra_delta_SBP bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled, quantile (0.75) 
+drop res 
+predict res, residuals
+summarize res, detail
+xtile base_K_MRA_tertile = base_K_MRA_filled, nq(3)
+tabulate base_K_MRA_tertile
+
+qreg mra_delta_SBP bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled, q(.25)
+estimates store q25
+qreg mra_delta_SBP bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled, q(.25)
+estimates store q50
+qreg mra_delta_SBP bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled, q(.25)
+estimates store q75
+qreg mra_delta_SBP bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled, q(.25)
+estimates store q25
+qreg mra_delta_SBP bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled, q(.50)
+estimates store q50
+qreg mra_delta_SBP bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled, q(.75)
+estimates store q75
+suest q25 q50 q75
+summarize mra_delta_SBP, detail
+
+qreg mra_delta_SBP bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled lastmednbr, q(.25)
+qreg mra_delta_SBP bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled lastmednbr, q(.50)
+
+summarize base_K_MRA_filled if base_K_MRA_tertile == 1, detail
+summarize base_K_MRA_filled if base_K_MRA_tertile == 2, detail
+summarize base_K_MRA_filled if base_K_MRA_tertile == 3, detail
+
+regress mra_delta_SBP bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled if base_K_MRA_tertile == 1
+estimates store tertile1
+regress mra_delta_SBP bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled if base_K_MRA_tertile == 2
+estimates store tertile2
+regress mra_delta_SBP bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled if base_K_MRA_tertile == 3
+estimates store tertile3
+suest tertile1 tertile2 tertile3
+
+sum base_K_MRA_filled if base_K_MRA_tertile == 1, detail
+sum base_K_MRA_filled if base_K_MRA_tertile == 2, detail
+sum base_K_MRA_filled if base_K_MRA_tertile == 3, detail
+
+regress mra_delta_SBP bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled if base_K_MRA_tertile == 1
+estimates store tertile1
+local r2_1 = e(r2)
+local f_1 = e(F)
+local n_1 = e(N)
+regress mra_delta_SBP bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled if base_K_MRA_tertile == 2
+estimates store tertile2
+local r2_2 = e(r2)
+local f_2 = e(F)
+local n_2 = e(N)
+regress mra_delta_SBP bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled if base_K_MRA_tertile == 3
+estimates store tertile3
+local r2_3 = e(r2)
+local f_3 = e(F)
+local n_3 = e(N)
+suest tertile1 tertile2 tertile3
+test [tertile1_mean]race_black= [tertile2_mean]race_black = [tertile3_mean]race_black
+qreg mra_delta_SBP bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled, q(0.25) if base_K_MRA_tertile == 3
+bysort base_K_MRA: qreg mra_delta_SBP bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled, q(0.25) 
+bysort base_K_MRA_tertile: qreg mra_delta_SBP bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN new_first_sbp_avg_filled_mra base_K_MRA_filled, q(0.25) 
+tab NUMBEROFDRUGS cohort
+bysort cohort: summarize NUMBEROFDRUGS
+gen baseline_k_combined = base_K_thiaz_filled
+replaced baseline_k_combined = base_K_MRA_filled if base_K_MRA_filled !=. & baseline_k_combined ==. 
+replace baseline_k_combined = base_K_MRA_filled if base_K_MRA_filled !=. & baseline_k_combined ==. 
+tab treatment
+regress delta_SBP treatment bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN baseline_SBP baseline_k_combined 
+regress delta_SBP treatment##race_black bmi updated_age female SUB_CKD CVDHISTORY RANDASSIGN baseline_SBP baseline_k_combined 
+regress delta_SBP treatment bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN baseline_SBP baseline_k_combined, q(0.25)
+qreg delta_SBP treatment bmi updated_age female race_black SUB_CKD CVDHISTORY RANDASSIGN baseline_SBP baseline_k_combined, q(0.25)
+qreg delta_SBP treatment##race_black bmi updated_age female SUB_CKD CVDHISTORY RANDASSIGN baseline_SBP baseline_k_combined, q(0.25)
+coefplot, keep(1.treatment#1.race_black 1.treatment 1.race_black) xline(0)  title("Regression Coefficients with 95% CIs")  xlabel(-4(2)8)
+margins r.treatment#race_black
+marginsplot,  title("Treatment Effect by Race")  ytitle("Treatment Effect on SBP") xlabel(0 "Non-Black" 1 "Black")  yline(0, lpattern(dash))
