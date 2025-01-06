@@ -1,0 +1,296 @@
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/bp_med_log_v2.dta", clear
+sort maskid formdays
+quietly by maskid formdays:  gen dup = cond(_N==1,0,_n)
+tab dup
+drop if dup == 2 
+drop if dup == 3
+merge m:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/analysis/data/allbp_intensive+standard.dta"
+drop if visitcode == "CLO"
+sort maskid formdays
+gen MRA = 0
+forvalues i = 1/10 {
+    replace MRA = 1 if (strpos(lower(medname`i'), "spir") > 0 |(strpos(lower(medname`i'), "actone") > 0 | strpos(lower(medname`i'), "inspra") > 0 | strpos(lower(medname`i'), "eple") > 0 | strpos(lower(medname`i'), "aldac") > 0))
+}
+forvalues i = 1/10 {
+    gen flag_mra`i' = strpos(lower(medname`i'), "spir") > 0 | strpos(lower(medname`i'), "actone") > 0 | strpos(lower(medname`i'), "eple") > 0 | strpos(lower(medname`i'), "aldac") > 0 | strpos(lower(medname`i'), "inspra") > 0
+}
+gen any_mra = (flag_mra1 + flag_mra2 + flag_mra3 + flag_mra4 + flag_mra5 + flag_mra6 + flag_mra7 + flag_mra8 + flag_mra9 + flag_mra10) > 0
+by maskid (formdays): gen first_mra_occurrence = any_mra == 1 & sum(any_mra) == 1
+gen first_mra_formdays = formdays if first_mra_occurrence == 1
+by maskid: egen first_mra_formdays_filled = min(first_mra_formdays)
+sort maskid formdays
+gen mra_daystart = .
+forvalues i = 1/10 {
+    replace mra_daystart = daysstart`i' if (strpos(lower(medname`i'), "spir") > 0 | strpos(lower(medname`i'), "eple") > 0 | strpos(lower(medname`i'), "aldac") > 0 | strpos(lower(medname`i'), "actone") > 0 | strpos(lower(medname`i'), "inspra") > 0)
+}
+gen first_mra_daysstart = .
+forvalues j = 1/10 {
+    replace first_mra_daysstart = daysstart`j' if first_mra_occurrence == 1 & flag_mra`j' == 1
+}
+by maskid: egen first_mra_daysstart_filled = min(first_mra_daysstart)
+sort maskid formdays
+bys maskid: egen min_mra_daystart = min(first_mra_daysstart)
+distinct maskid if mra == 1 & min_mra_daystart < 0
+distinct maskid if mra == 1 & min_mra_daystart >= 0
+tab MRA
+gen flag = (min_mra_daystart < 0)
+* Create a variable that is 1 if any observation for a maskid has flag = 1
+bysort maskid: egen maskid_flag = max(flag)
+* Keep only observations where maskid_flag is 0 (i.e., remove all observations for maskids with min_mra_daystart < 0)
+keep if maskid_flag == 0
+* Clean up
+drop flag maskid_flag
+// Define the list of medication names to search for
+// Create a local macro with the list of medications
+local medlist `""spironolactone hct2" "spironolactone hctz" "spironolactone hydrochlorot" "spironolactone hydrochlorothiazide" "spironolactone-hctz" "spironolactone/HCTZ" "spironalactone/htctz" "spironactone-hctz" "Spironolactone-HCTZ" "HCTZ-Aldactone""'
+* Generate a flag variable to identify observations with specified medications
+gen flag = 0
+forvalues i = 1/10 {
+    foreach med of local medlist {
+        replace flag = 1 if medname`i' == "`med'"
+    }
+}
+* Create a variable that is 1 if any observation for a maskid has flag = 1
+bysort maskid: egen maskid_flag = max(flag)
+* Keep only observations where maskid_flag is 0 (i.e., remove all observations for maskids with flagged medications)
+keep if maskid_flag == 0
+* Clean up
+drop flag maskid_flag
+distinct maskid if MRA ==1
+gen mra_daystart_same_count = 0
+* Loop through daysstart1 to daysstart10
+forvalues i = 1/10 {
+    replace mra_daystart_same_count = mra_daystart_same_count + 1 if daysstart`i' == mra_daystart & mra_daystart != .
+}
+* Generate indicator for multiple occurrences
+gen multiple_same_daystart = (mra_daystart_same_count > 1) if mra_daystart != .
+* Optional: Label the new variable
+label variable multiple_same_daystart "More than one occurrence of daystart thats identical to mra_daystart in daysstart1-10"
+* Now remove anyone who started MRA the same day with other meds
+* Generate a flag variable to identify observations with multiple_same_daystart == 1
+gen flag = (multiple_same_daystart == 1)
+* Create a variable that is 1 if any observation for a maskid has flag = 1
+bysort maskid: egen maskid_flag = max(flag)
+* Keep only observations where maskid_flag is 0 (i.e., remove all observations for maskids with multiple_same_daystart == 1)
+keep if maskid_flag == 0
+* Clean up
+drop flag maskid_flag
+distinct maskid if MRA ==1
+sort maskid formdays
+by maskid: gen mra_occurrence = sum(MRA == 1 & (MRA[_n-1] == 0 | _n == 1 | formdays == 0))
+drop if mra_occurrence > 1 & mra_occurrence !=.
+distinct maskid if mra_occurrence == 1
+gen prior_onMRA = .
+by maskid: replace prior_onMRA = formdays[_n-1] if MRA == 1 & (MRA[_n-1] == 0 | _n == 1) & mra_occurrence == 1
+* This subsequent code ensures that only the 1st occurrence is used
+replace prior_onMRA = . if mra_occurrence >= 2 & prior_onMRA != .
+* Sort data by maskid and formdays
+sort maskid formdays  
+* Generate and fill up the entire column for each MRA occurrence
+* Generate variables for the first and second occurrences of MRA
+by maskid: gen first_onMRA = formdays if MRA == 1 & sum(MRA) == 1
+by maskid: gen second_onMRA = formdays if MRA == 1 & sum(MRA) == 2
+* Carry forward non-missing values in the column 'prior_onMRA'
+bysort maskid (formdays): gen prior_onMRA_filled = prior_onMRA if prior_onMRA != .
+bysort maskid (formdays): replace prior_onMRA_filled = prior_onMRA_filled[_n-1] if missing(prior_onMRA_filled)
+* Include the first row as well
+by maskid: replace prior_onMRA = prior_onMRA[_n+1] if missing(prior_onMRA) & !missing(prior_onMRA[_n+1])
+* Sort data again by maskid and formdays
+sort maskid formdays
+by maskid: egen first_onMRA_filled = max(first_onMRA)
+by maskid: egen second_onMRA_filled = max(second_onMRA)
+* Generate and fill in the third and fourth occurrences of MRA
+by maskid: gen third_onMRA = formdays if MRA == 1 & sum(MRA) == 3
+by maskid: egen third_onMRA_filled = max(third_onMRA)
+by maskid: gen fourth_onMRA = formdays if MRA == 1 & sum(MRA) == 4
+by maskid: egen fourth_onMRA_filled = max(fourth_onMRA)
+* medication list
+sort maskid formdays
+gen med_oxin = 0
+gen med_triam = 0
+gen med_olol = 0
+gen med_ipine_azem = 0
+gen med_thia_chlo_hct = 0
+gen med_fur_bum_tors = 0
+gen med_hydral_azine = 0
+gen med_pril_artan = 0
+gen med_idine_clon = 0
+gen med_minoxi = 0 
+gen med_guanfacine = 0 
+forvalues i = 1/10 {
+    replace med_oxin = 1 if regexm(lower(medname`i'), "(cardu|doxa|osin|oxin|hytrin|tera|tamsu|alfu)")
+replace med_triam = 0.0005 if regexm(lower(medname`i'), "(triam|amil)")
+    replace med_olol = 2 if regexm(lower(medname`i'), "(olol|metop|coreg|carv|lopre|topr|propa|nebi|nado|atenelol)")
+    replace med_ipine_azem = 5 if regexm(lower(medname`i'), "(ipine|azem|norv|vera|nife|proca|nicar|nefe|caduet)")
+replace med_minoxi = 10000 if regexm(lower(medname`i'), "(mino|xidil)")
+replace med_guanfacine = 0.01 if regexm(lower(medname`i'), "(guan)")
+    replace med_thia_chlo_hct = 9 if regexm(lower(medname`i'), "(thia|chlo|chlorth|hyrdo|thiaz|azide|hyzaar|indap|metola|diurel|hctz|hygro|edarbyclor)")
+    replace med_fur_bum_tors = 13 if regexm(lower(medname`i'), "(fur|bum|tors|inda|etha|demadex|lasix)")
+    replace med_hydral_azine = 0.5 if regexm(lower(medname`i'), "(hydral|azine)")
+    replace med_pril_artan = 1000 if regexm(lower(medname`i'), "(pril|artan|benic|vals|olme|edarbi|diovan|azil|trando|micardis|atacand)")
+    replace med_idine_clon = 100 if regexm(lower(medname`i'), "(idine|clon|cata)")
+}
+* Sum all medication categories into a single variable
+gen med_category = med_oxin + med_olol + med_ipine_azem + med_thia_chlo_hct + med_fur_bum_tors + med_hydral_azine + med_pril_artan + med_idine_clon + med_minoxi + med_triam + med_guanfacine 
+* Label the new variable
+label variable med_category "Sum of medication categories"
+*this works for combination meds as well- for example, atenolol, amlodipine/benazapril, will sum up to 1007 ( 1000 + 5 + 2)
+* Clean up intermediate variables OR keep them for later 
+sort maskid formdays 
+ 
+* Get med_category for first and second MRA visits
+by maskid: gen prior_med_category = med_category if formdays == prior_onMRA
+* Because prior_onMRA is one row below
+by maskid: replace prior_med_category = med_category if formdays == prior_onMRA_filled
+* Generate column to store "med_category" according to visits
+by maskid: gen first_med_category = med_category if formdays == first_onMRA
+by maskid: gen second_med_category = med_category if formdays == second_onMRA
+by maskid: gen third_med_category = med_category if formdays == third_onMRA
+by maskid: gen fourth_med_category = med_category if formdays == fourth_onMRA
+* Fill these values for all rows within each maskid
+by maskid: egen prior_med_category_filled = max(prior_med_category)
+by maskid: egen first_med_category_filled = max(first_med_category)
+by maskid: egen second_med_category_filled = max(second_med_category)
+by maskid: egen third_med_category_filled = max(third_med_category)
+by maskid: egen fourth_med_category_filled = max(fourth_med_category)
+* Generate the difference in med_category between first and second visit - they should be equal 
+gen med_category_diff_2_1 = second_med_category_filled - first_med_category_filled
+gen med_category_diff_3_1 = third_med_category_filled - first_med_category_filled
+gen med_category_diff_3_2 = third_med_category_filled - second_med_category_filled
+gen med_category_diff_prior_1 = prior_med_category_filled - first_med_category_filled 
+gen med_category_prior_1_unequal = (med_category_diff_prior_1 != 0 & med_category_diff_prior_1 !=.)
+gen med_category_2_1_unequal = (med_category_diff_2_1 != 0 & med_category_diff_2_1 !=.)
+gen med_category_3_1_unequal = (med_category_diff_3_1 != 0 & med_category_diff_3_1 !=. )
+gen med_category_3_2_unequal = (med_category_diff_3_2 != 0 & med_category_diff_3_2 !=. ) 
+* Label the new variables
+label variable med_category_diff_2_1 "Difference in med_category between 1st and 2nd MRA visits"
+label variable med_category_2_1_unequal "Flag: 1 if med_category unequal between 1st and 2nd MRA visits"
+* now with the meds and visits sorted, remove if the med_category is different from the visit prior to MRA and on MRA startday
+* Generate a flag variable to identify observations with multiple_same_daystart == 1
+gen flag = (med_category_prior_1_unequal == 1)
+* Create a variable that is 1 if any observation for a maskid has flag = 1
+bysort maskid: egen maskid_flag = max(flag)
+* Keep only observations where maskid_flag is 0 (i.e., remove all observations for maskids with multiple_same_daystart == 1)
+keep if maskid_flag == 0
+* Clean up
+drop flag maskid_flag
+distinct maskid if MRA == 1
+browse seatdiast
+by maskid: gen first_DBP = seatdiast if formdays == first_onMRA_filled
+by maskid: egen first_DBP_filled = max(first_DBP)
+by maskid: gen second_DBP = seatdiast if formdays == second_onMRA_filled
+by maskid: egen second_DBP_filled = max(second_DBP)
+by maskid: gen third_DBP = seatdiast if formdays == third_onMRA_filled
+by maskid: egen third_DBP_filled = max(third_DBP)
+by maskid: gen fourth_DBP = seatdiast if formdays == fourth_onMRA_filled
+by maskid: egen fourth_DBP_filled = max(fourth_DBP)
+* Find out who has missing DBP at baseline
+gen have_DBP_baseline = .
+replace have_DBP_baseline = 1 if first_DBP_filled !=.
+distinct maskid if MRA == 1 & have_DBP_baseline ==1
+sort maskid formdays 
+by maskid: gen prior_DBP = seatdiast[_n-1] if missing(seatdiast) & !missing(seatdiast[_n-1])
+by maskid: replace prior_DBP = prior_DBP[_n-1] if missing(prior_DBP) & !missing(prior_DBP[_n-1])
+* Calculate the Difference Between the Visit When MRA is Started and the Prior MRA Visit:
+by maskid: egen mra_daystart_first = min(mra_daystart)
+gen visit_diff_prior_MRA = mra_daystart_first - prior_onMRA_filled 
+gen visit_diff_prior_and1_eligible = visit_diff_prior_MRA < 60 if !missing(visit_diff_prior_MRA)
+gen eligible_missing_first_DBP = (visit_diff_prior_and1_eligible == 1 & med_category_prior_1_unequal == 0)
+gen new_first_dbp = first_DBP_filled  
+replace new_first_dbp = prior_DBP if missing(first_DBP_filled) & eligible_missing_first_DBP == 1
+distinct maskid if new_first_dbp !=. 
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/DBP.1.5.dta"
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/DBP.1.5.dta"
+sort maskid formdays
+gen day_diff_pre = min_mra_daystart - formdays
+gen day_diff_pre_2 = first_mra_formdays_filled - formdays
+gen diff = day_diff_pre - day_diff_pre_2 
+gen differentformdaysstartday = 1 if day_diff_pre != day_diff_pre_2 
+distinct maskid if differentformdaysstartday == 1 
+distinct maskid if differentformdaysstartday == 1 
+drop if day_diff_pre < 0 & day_diff_pre !=.
+drop if day_diff_pre > 60 & day_diff_pre !=.
+sort maskid day_diff_pre
+by maskid: gen consistent_med = (med_category == med_category[1])
+browse maskid formdays seatdiast new_first_dbp day_diff_pre consistent_med min_mra_daystart
+export delimited maskid formdays seatdiast new_first_dbp day_diff_pre consistent_med min_mra_daystart using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/export_preMRA_dbp_to_python_9.3", replace
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/for_python_DBP.dta"
+import delimited "/Users/jiawei/Downloads/dbp_pre_mra_results_test.csv", clear 
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/preMRA_dbpavg_frmpython.dta"
+sort maskid formdays
+by maskid: egen previsit1DBP = max(bp_pre_mra_visit_1)
+by maskid: egen previsit2DBP = max(bp_pre_mra_visit_2)
+by maskid: egen previsit3DBP = max(bp_pre_mra_visit_3)
+by maskid: egen previsit4DBP = max(bp_pre_mra_visit_4)
+egen row_mean = rowmean(previsit1DBP previsit2DBP previsit3DBP previsit4DBP) 
+rename row_mean meanDBPpreMRA
+rename meanDBPpreMRA new_first_dbp_avg
+distinct maskid if new_first_dbp_avg!=. 
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/preMRA_dbpavg_frmpython.dta", replace
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/DBP.1.5.dta"
+drop _merge
+tab MRA
+merge m:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/preMRA_dbpavg_frmpython.dta"
+sort maskid formdays
+distinct maskid if _merge ==3
+distinct maskid if MRA == 1
+egen new_first_dbp_avg_filled = min(new_first_dbp_avg) , by (maskid)
+distinct maskid if MRA ==1 & new_first_dbp_avg_filled !=.
+gen is_missing_dbp = missing(new_first_dbp_avg_filled)
+* Identify the maskid that meet the condition
+gen condition_met = (first_mra_occurrence == 1 & is_missing_dbp == 1 )
+* Create a flag for maskid that meet the condition
+bysort maskid: egen maskid_meets_condition = max(condition_met)
+* Generate the subset and save it as a new dataset
+preserve
+keep if maskid_meets_condition == 1
+* Keep only the required variables
+keep maskid formdays first_mra_daysstart first_mra_formdays med_category seatdiast
+* Save the subset to a new dataset
+* Restore the original dataset
+restore
+summarize day_diff_pre, detail
+drop consistent_med
+sort maskid formdays
+distinct maskid if MRA == 1
+tab any_mra
+tab any_mra MRA
+gen diff = formdays - min_mra_daystart if MRA == 1
+keep if diff != . & diff < 91
+keep if diff >= 0 & diff != .
+sort maskid formdays
+by maskid: gen consistent_med = (med_category == med_category[1])
+distinct maskid if MRA ==1
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/for_python_DBP_delta.dta"
+browse maskid formdays new_first_dbp_avg_filled min_mra_daystart diff seatdiast med_category 
+export delimited maskid formdays new_first_dbp_avg_filled min_mra_daystart diff seatdiast med_category consistent_med using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/for_python_DBPdelta", replace
+use "/Users/jiawei/Downloads/post_MRA_DBP_avg_file.dta"
+egen mean_bp_diff_mra = mean(bp_diff), by(maskid)
+rename bp_diff mra_dbp_diff 
+rename mean_diff_duration mean_diff_duration_mra 
+sort maskid formdays
+by maskid: gen first_obs_mra = (_n == 1)
+bysort first_obs_mra: summarize mean_diff_duration_mra, detail
+distinct maskid if mean_bp_diff_mra !=. 
+save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/from python delta DBP MRA.dta"
+use "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/DBP.1.5.dta"
+drop _merge
+merge m:m maskid formdays using "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/from python delta DBP MRA.dta"
+drop _merge 
+distinct maskid if mean_bp_diff !=. & MRA ==1
+summarize mean_bp_diff, detail, if MRA ==1
+sort maskid formdays 
+egen mean_dbp_diff_mra_filled = min(mean_bp_diff_mra) , by (maskid)
+sort maskid formdays
+by maskid: gen first_obs_mra_fordeltaBP = (_n == 1)
+summarize mean_dbp_diff_mra_filled, detail, if first_obs_mra_fordeltaBP ==1
+gen mra_cohort = .
+replace mra_cohort = 1 if mean_dbp_diff_mra_filled !=. 
+distinct maskid if mra_cohort == 1
+browse maskid mra_cohort mean_dbp_diff_mra_filled seatdiast
+
+
+. save "/Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/DBP.1.5.dta", replace
+file /Users/jiawei/Library/CloudStorage/Box-Box/JiaWeiTan Project folder (from Maria)/DBP.1.5.dta saved
+
+
